@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import tomllib
 from pathlib import Path
@@ -27,7 +28,7 @@ def check_credentials(config: dict) -> None:
         )
         if not os.environ.get(key):
             raise ValueError(
-                f"Missing required credential: {key}; export it explicitly before live execution"
+                f"Missing required credential: {key}; set it in the suite root .env or export it before live execution"
             )
 
 
@@ -36,7 +37,13 @@ def launch(ctx: Context, args) -> int:
         raise ValueError(
             "Live research operations require --allow-paid; default demo requires no key"
         )
-    workspace = args.research_workspace.resolve()
+    workspace = (args.research_workspace or ctx.workspace / "research/pipeline").resolve()
+    if args.config is None:
+        if not args.investor or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", args.investor):
+            raise ValueError(
+                "Supply --investor for the installed rehearsal config or --config explicitly"
+            )
+        args.config = Path(f"configs/investors/{args.investor}/rehearsal.toml")
     if not workspace.is_dir():
         raise ValueError("Research workspace does not exist")
     # Native configs must belong to the selected workspace; never accept ../ escapes.

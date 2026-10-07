@@ -2,14 +2,93 @@
 
 This is an opt-in research workflow requiring reviewed evidence, coherent native configurations and prepared assets. The default demo covers only the staged software demonstration described in [the reviewer guide](reviewer-guide.md). No live inference or public collection was executed to validate this guide; command contracts were inspected at the pinned revisions in [the audit](component-audit.md).
 
-Fetch all pinned sources, then install the required profile:
+## Suite commands and shared credentials
+
+Run everything from the suite root. Copy `.env.example` to `.env` and fill only
+credentials required by your chosen providers. All research commands below,
+including `assess` and `web`, load this one file and pass settings to native
+processes. Shell-exported variables take precedence. Values are literal; there
+is no shell execution or `${...}` interpolation. Component-local dotenv loading
+is disabled for these subprocesses. No credentials are copied into checkouts or
+run reports. No-key `test`, `demo`, and `verify` do not load `.env`.
 
 ```bash
-uv run vclogic init
-uv run vclogic bootstrap --profile all
+uv run vclogic init --embeddings
+uv run vclogic discover --name "Investor Name"
+# Use the actual slug printed by discovery in the commands below:
+uv run vclogic collect --investor investor-slug
+uv run vclogic process --investor investor-slug
+uv run vclogic memory --investor investor-slug --allow-paid
+uv run vclogic onboard --investor investor-slug
+uv run vclogic assess --investor investor-slug --pitch /absolute/path/pitch.txt --allow-paid
+uv run vclogic web --investor investor-slug --allow-paid
 ```
 
-Base environments do not install every AV, embedding or research extra, provision model weights, authenticate services, or build every research dataset. Select those requirements explicitly in the owning component. For native commands below, run from the named checkout unless a prepared workspace is specified. Preserve the adjacent sibling layout.
+`discover` and `collect` use the collector's interactive wizard, preserving its
+identity, source, and budget review. `collect` downloads selected sources;
+`process` processes downloaded sources, then exports and verifies the corpus.
+`memory` first verifies the collector export, invokes native `full-build`, then
+checks the memory. This is the full-export review method described below, not
+the legacy curated-source importer. `onboard` prepares, checks and installs the
+native bundle. `assess` starts native rehearsal for a new pitch using the
+installed investor configurations; `web` uses the same workspace.
+
+Paths are resolved automatically under `workspace/research/`:
+
+| Artifact | Location |
+|---|---|
+| Collector sources and export | `traces/<investor-slug>/` |
+| Generated Investment Memory | `wiki/<investor-slug>/` |
+| Memory generation cache | `memory-cache/<investor-slug>/` |
+| Onboarding bundle | `bundles/<investor-slug>/` |
+| Installed assessment/web workspace | `pipeline/` |
+
+Global `--workspace /absolute/path` before the command relocates this tree.
+Existing `assess --workspace ... --config ...` and `web --workspace ... --config ...`
+overrides remain available. Existing memories and bundles are not overwritten;
+use a new workspace for another version. Native caches and collector state can
+be reused when retrying interrupted work. Stage execution stops on the first
+nonzero native exit status. Inspect native warnings and human review outcomes,
+not merely the final command exit status.
+
+For an already prepared historical pitch package, run native graph stages:
+
+```bash
+uv run vclogic pipeline --investor investor-slug --config configs/investors/investor-slug/canonical.toml --allow-paid
+```
+
+This delegates to `vc-clone-graph preflight`, `run`, and `verify`. Config paths
+resolve inside `workspace/research/pipeline/`. A newly onboarded wiki alone does
+not supply a historical pitch package: use `assess --pitch` for a new pitch.
+Review the native provider/model/contract configuration before generation;
+`.env` supplies credentials, not a new research methodology.
+
+Selected native options can follow `--`; paths in those options should be absolute:
+
+```bash
+uv run vclogic process --investor investor-slug -- --transcription-model MODEL
+uv run vclogic memory --investor investor-slug --allow-paid -- --model MODEL --workers 3
+uv run vclogic onboard --investor investor-slug --allow-paid -- --from-pitch-show --max-episodes 5
+```
+
+Suite-managed paths and stage selection cannot be overridden by forwarded flags.
+`onboard --skip-indexes` is available for an explicitly partial bundle and reports
+`ready_for_assessment=false`; it cannot support live assessment. Treat this as a
+terminal partial artifact for that workspace: the native installer never overwrites
+an installed bundle, so this command is not an in-place upgrade route. For live
+research, install embedding dependencies first and omit `--skip-indexes`. Wiki-only indexing
+can download the pinned embedding model. Pitch Show extraction can use paid
+inference and requires `--allow-paid`; `--collect-only` avoids extraction but can
+still access public websites.
+
+`init --embeddings` installs existing locked embedding extras in selected
+onboarding, assessment and web environments; model weights load later when used.
+AV extras, ffmpeg, authenticated Codex CLI, local provider services, and human
+review remain explicit prerequisites. Initialization does not provision these.
+The commands were validated with mocks and a real frozen-memory partial onboarding
+run; no live public-data collection or paid generation was executed as a test.
+
+The sections below document native interfaces and remaining research requirements.
 
 ## 1. Collect and review evidence
 
@@ -70,7 +149,7 @@ For a new pitch, the suite adapter delegates to existing rehearsal start and req
 uv run vclogic assess --workspace /absolute/research/workspace --config /absolute/research/workspace/configs/rehearsal.toml --investor <slug> --pitch /absolute/research/pitch.txt --allow-paid
 ```
 
-Configure generation and embedding providers separately if required, export only their selected credential names, and prepare models/indexes first. `--allow-paid` authorizes the adapter's live path; it does not promise a budget or free local execution. Memory generation uses Codex authentication; OpenRouter/OpenAI assessment uses configured API-key names; local Ollama requires its own running service and weights. `.env.example` contains placeholders only.
+Configure generation and embedding providers separately if required, set their selected credential names in the suite root `.env`, and prepare models/indexes first. `--allow-paid` authorizes the adapter's live path; it does not promise a budget or free local execution. Memory generation uses Codex authentication; OpenRouter/OpenAI assessment uses configured API-key names; local Ollama requires its own running service and weights. `.env.example` contains placeholders only.
 
 Preserve investigation and decision JSON separately, their hash binding, retrieval reads, source quotations, native configuration, model identity and usage/provenance receipts. Evaluate rationales against independently reviewed rationales and investment decisions against independent outcomes, retaining abstentions, failures and coverage. A publication archive and exact evaluation specification have not yet been supplied, so no generic evaluation command is claimed to reproduce the paper.
 

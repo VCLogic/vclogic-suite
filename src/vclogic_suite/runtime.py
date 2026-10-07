@@ -44,6 +44,7 @@ def execution_environment(*, no_keys: bool = False) -> dict[str, str]:
             if not any(word in k.upper() for word in ("TOKEN", "SECRET", "PASSWORD", "API_KEY"))
         }
         env.update(
+            PYTHON_DOTENV_DISABLED="1",
             HF_HUB_OFFLINE="1",
             TRANSFORMERS_OFFLINE="1",
             HF_HUB_DISABLE_TELEMETRY="1",
@@ -141,7 +142,9 @@ def require_core(ctx: Context) -> None:
         raise ValueError(f"Reviewer setup incomplete: {error}. Run uv run vclogic init") from error
 
 
-def bootstrap(ctx: Context, profile: str = "core", *, offline: bool = False) -> dict:
+def bootstrap(
+    ctx: Context, profile: str = "core", *, offline: bool = False, embeddings: bool = False
+) -> dict:
     if shutil.which("uv") is None or shutil.which("git") is None:
         raise ValueError("Install uv and Git before bootstrap")
     selected = PROFILES[profile]
@@ -152,14 +155,29 @@ def bootstrap(ctx: Context, profile: str = "core", *, offline: bool = False) -> 
         project = ctx.checkout(name)
         receipt = project / ".venv/vclogic-suite-environment.json"
         stamp = environment_stamp(ctx, name)
-        if receipt.is_file() and json.loads(receipt.read_text()) == stamp:
+        extra_receipt = project / ".venv/vclogic-suite-embeddings.json"
+        needs_embeddings = embeddings and name in {"onboarding", "assessment", "web"}
+        if (
+            receipt.is_file()
+            and json.loads(receipt.read_text()) == stamp
+            and (
+                not needs_embeddings
+                or (extra_receipt.is_file() and json.loads(extra_receipt.read_text()) == stamp)
+            )
+        ):
             continue
         print(f"Installing locked {name} environment...", file=sys.stderr, flush=True)
         command = ["uv", "sync", "--locked", "--no-dev", "--python", "3.12.12"]
+        if needs_embeddings:
+            command.extend(["--extra", "embeddings"])
         if offline:
             command.append("--offline")
         run(command, cwd=project, log=ctx.workspace / "setup-logs" / f"{name}.log")
         write_json(receipt, stamp)
+        if needs_embeddings:
+            write_json(extra_receipt, stamp)
+        else:
+            extra_receipt.unlink(missing_ok=True)
     if "web" in selected:
         frontend = ctx.checkout("web") / "web/frontend"
         receipt = frontend / "node_modules/.vclogic-suite-build.json"

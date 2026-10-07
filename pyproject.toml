@@ -3,7 +3,9 @@ name = "vclogic-suite"
 version = "0.1.0"
 description = "Pinned, reviewer-friendly orchestration for the VCLogic research ecosystem"
 requires-python = ">=3.12,<3.13"
-dependencies = []
+dependencies = [
+    "python-dotenv==1.2.3",
+]
 
 [project.scripts]
 vclogic = "vclogic_suite.cli:main"

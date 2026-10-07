@@ -45,6 +45,11 @@ def parser() -> argparse.ArgumentParser:
         default="all",
         help="Dependencies to install (default: all)",
     )
+    init.add_argument(
+        "--embeddings",
+        action="store_true",
+        help="Install native embedding extras for onboarding, assessment and web",
+    )
     setup = commands.add_parser(
         "bootstrap", help="Fetch components and install locked environments"
     )
@@ -61,12 +66,19 @@ def parser() -> argparse.ArgumentParser:
         "verify", help="Revalidate a saved demo through component validators"
     )
     verify.add_argument("--run", type=Path)
+    from .workflow import add_commands
+
+    add_commands(commands)
     for name in ("assess", "web"):
         command = commands.add_parser(
             name, help="Explicit live operation on a prepared research workspace"
         )
-        command.add_argument("--workspace", dest="research_workspace", type=Path, required=True)
-        command.add_argument("--config", type=Path, required=True, help="Native rehearsal TOML")
+        command.add_argument("--workspace", dest="research_workspace", type=Path)
+        command.add_argument(
+            "--config",
+            type=Path,
+            help="Native rehearsal TOML; defaults to installed investor config",
+        )
         command.add_argument(
             "--allow-paid", action="store_true", help="Permit configured provider-backed operations"
         )
@@ -75,6 +87,9 @@ def parser() -> argparse.ArgumentParser:
             command.add_argument("--pitch", type=Path, required=True)
             command.add_argument("--company", action="append", default=[])
         else:
+            command.add_argument(
+                "--investor", help="Investor slug for the installed rehearsal config"
+            )
             command.add_argument("--port", type=int, default=8000)
     return root
 
@@ -91,7 +106,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "init":
             for name in progress(ctx.components, "Fetch repositories"):
                 ensure_component(ctx.components[name], ctx.components_dir, offline=args.offline)
-            result = bootstrap(ctx, args.profile, offline=args.offline)
+            result = bootstrap(
+                ctx,
+                args.profile,
+                offline=args.offline,
+                **({"embeddings": True} if args.embeddings else {}),
+            )
         elif args.command == "components":
             rows = []
             for item in ctx.components.values():
@@ -135,9 +155,12 @@ def main(argv: list[str] | None = None) -> int:
 
             result = verify_run(ctx, args.run)
         else:
+            from .environment import research_environment
             from .research import launch
+            from .workflow import STAGES, run_stage
 
-            return launch(ctx, args)
+            with research_environment(ctx.root):
+                return run_stage(ctx, args) if args.command in STAGES else launch(ctx, args)
         print(json.dumps(result, indent=2))
         return 0
     except (ValueError, OSError, KeyError, TypeError) as error:
