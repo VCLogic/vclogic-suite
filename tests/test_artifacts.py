@@ -42,3 +42,17 @@ def test_no_key_environment_strips_credentials_and_python_overrides(monkeypatch)
     assert "PYTHONPATH" not in env
     assert "VIRTUAL_ENV" not in env
     assert env["HF_HUB_OFFLINE"] == "1"
+
+
+def test_web_command_checks_editable_assessment_dependency(tmp_path):
+    from vclogic_suite.runtime import component_command
+
+    class Context:
+        def checkout(self, name):
+            if name == "assessment":
+                raise ValueError("Component assessment is modified")
+            return tmp_path
+
+    (tmp_path / ".venv").mkdir()
+    with pytest.raises(ValueError, match="assessment is modified"):
+        component_command(Context(), "web", ["python", "-c", "pass"], cwd=tmp_path)

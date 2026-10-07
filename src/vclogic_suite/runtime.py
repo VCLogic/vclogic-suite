@@ -81,6 +81,10 @@ def component_command(
     log: Path | None = None,
     no_keys: bool = True,
 ) -> str:
+    for dependency in {"onboarding": ("memory", "assessment"), "web": ("assessment",)}.get(
+        component, ()
+    ):
+        ctx.checkout(dependency)
     project = ctx.checkout(component)
     if not (project / ".venv").is_dir():
         raise ValueError(f"Missing {component} environment; run vclogic bootstrap")

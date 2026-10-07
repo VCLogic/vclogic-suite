@@ -62,6 +62,8 @@ Use an assessment-native workspace with reviewed investor registration, taxonomy
 
 For an already prepared historical assessment, invoke the assessment environment's existing `vc-clone-graph preflight`, `run` and `verify` with `--config /absolute/path/to/native.toml`, setting the process working directory to the prepared workspace. Native relative paths resolve against that workspace. The executable lives in the assessment checkout's `.venv/bin/` on Linux/macOS. Run preflight before paid work; it does not replace human input review.
 
+The suite research adapter currently requires a grounded rehearsal config with `classification.canonical_config_path` inside the selected workspace. Use the native component CLI for other rehearsal modes.
+
 For a new pitch, the suite adapter delegates to existing rehearsal start and requires explicit cost authorization:
 
 ```bash

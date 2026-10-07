@@ -33,6 +33,16 @@ Inspect `workspace/latest.json` for the latest run location. Each `workspace/run
 | Agentic Assessment | Retrieval, rationale investigation, decision synthesis and rehearsal |
 | Web Application | UI consuming prepared assessment assets; optional |
 
+```mermaid
+flowchart TD
+    P[Public Traces] --> C[VC Trace Collector]
+    C --> M[Investment Memory]
+    M --> O[Investor Onboarding]
+    O --> A[Agentic Assessment]
+    A --> E[Separate rationale and decision evaluation]
+    A --> W[Web Application / Rehearsal]
+```
+
 Source URLs, full commits and local aliases are in [the component manifest](manifests/components.lock.json). Downloaded checkouts live under `.components/`; generated data lives under `workspace/`. Four component locks are preserved; memory validation uses the locked onboarding environment.
 
 ```bash
@@ -45,3 +55,5 @@ uv run vclogic doctor
 Global path options precede the subcommand, for example `uv run vclogic --workspace /tmp/reviewer-output demo`. Research commands have their own explicit workspace/config options. See [the reviewer guide](docs/reviewer-guide.md), [architecture](docs/architecture.md), [reproducibility](docs/reproducibility.md), [full research workflow](docs/full-pipeline.md), [Docker](docs/docker.md), and [troubleshooting](docs/troubleshooting.md).
 
 The [Phase 1 audit](docs/component-audit.md) is a historical record, including known compatibility issues and component test failures; its statements that the suite was not yet implemented describe that audit date. See [NOTICE](NOTICE.md) for unresolved rights and attribution. No publication citation or project-wide license grant has been provided.
+
+See [implementation verification](docs/implementation-verification.md) for executed checks and remaining research-release boundaries.

@@ -8,6 +8,34 @@ from pathlib import Path
 from types import SimpleNamespace
 
 
+def offline_embedding_identity(settings):
+    """Ask native providers for their identity with injected inert model/client objects."""
+    from vc_clone_graph.providers.base import embedding_identity
+    from vc_clone_graph.providers.ollama import OllamaProvider
+    from vc_clone_graph.providers.sentence_transformers import SentenceTransformerEmbeddingProvider
+
+    if settings.kind == "ollama":
+        if not settings.base_url:
+            raise ValueError("Ollama embeddings require embedding.base_url")
+        provider = OllamaProvider(
+            "embedding-only", settings.model, settings.base_url, client=object()
+        )
+    elif settings.kind == "sentence_transformers":
+        provider = SentenceTransformerEmbeddingProvider(
+            settings.model,
+            revision=settings.revision,
+            device=settings.device,
+            batch_size=settings.batch_size,
+            normalize=settings.normalize,
+            document_prefix=settings.document_prefix,
+            query_prefix=settings.query_prefix,
+            model_instance=object(),
+        )
+    else:
+        raise ValueError("Rehearsal embeddings must be local")
+    return SimpleNamespace(metadata=embedding_identity(provider))
+
+
 def main() -> None:
     from vc_clone_graph.rehearsal_config import load_rehearsal_config
 
@@ -47,16 +75,7 @@ def main() -> None:
         _taxonomy(root / config.rehearsal.taxonomy_path)
         if config.embedding is None:
             raise ValueError("Research adapter requires explicit pinned embedding configuration")
-        values = config.embedding.model_dump()
-        identity = SimpleNamespace(
-            metadata={
-                "backend": values["kind"],
-                **{
-                    key: values[key]
-                    for key in ("model", "revision", "normalize", "document_prefix", "query_prefix")
-                },
-            }
-        )
+        identity = offline_embedding_identity(config.embedding)
         HybridWikiIndex.load(
             root / "indexes" / f"{slug}.json",
             profile.wiki_path,
