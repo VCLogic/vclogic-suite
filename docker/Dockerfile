@@ -12,8 +12,9 @@ WORKDIR /opt/vclogic
 COPY pyproject.toml uv.lock .python-version ./
 COPY src/ src/
 COPY manifests/ manifests/
+COPY expected_outputs/ expected_outputs/
 COPY README.md ./
-RUN uv sync --locked && uv run --no-sync vclogic bootstrap --profile core
+RUN uv sync --locked --no-dev && uv run --no-sync vclogic bootstrap --profile core && uv cache clean
 # The image contains only the lightweight locked component environments.
 # No credential, live provider, model weights or host component tree is copied.
 RUN mkdir -p /workspace
