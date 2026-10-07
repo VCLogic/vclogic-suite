@@ -1,6 +1,6 @@
 # Reviewer guide
 
-From the suite root, run `uv sync`, `uv run vclogic demo`, then `uv run vclogic verify`. Setup downloads exact Git revisions and Python dependencies. It does not download embedding or generation model weights. A prepared installation supports `uv run vclogic demo --offline`; an empty cache does not.
+From the suite root, run `uv sync`, `uv run vclogic init`, then `uv run vclogic test`. `uv sync` installs the suite CLI; `init` fetches all five exact Git revisions without installing component environments. `test` installs core dependencies and runs the no-key demo with component validators and provenance checks, returning a nonzero exit status on failure. It reuses the existing `demo` workflow and can fetch missing core repositories. `verify` revalidates a saved run; `uv run pytest` runs the suite developer tests. Setup downloads Git revisions and Python dependencies. It does not download embedding or generation model weights. A prepared installation supports `uv run vclogic test --offline`; an empty cache does not.
 
 The run report distinguishes these outcomes:
 

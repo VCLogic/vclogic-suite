@@ -33,6 +33,8 @@ def parser() -> argparse.ArgumentParser:
     components = commands.add_parser("components", help="List all exact component revisions")
     components.add_argument("--fetch", action="store_true", help="Fetch all pinned revisions")
     components.add_argument("--offline", action="store_true")
+    init = commands.add_parser("init", help="Fetch and verify all five pinned repositories")
+    init.add_argument("--offline", action="store_true", help="Only verify existing checkouts")
     setup = commands.add_parser(
         "bootstrap", help="Fetch components and install locked environments"
     )
@@ -40,7 +42,7 @@ def parser() -> argparse.ArgumentParser:
     setup.add_argument("--offline", action="store_true")
     commands.add_parser("doctor", help="Inspect local tools/checkouts without external requests")
     demo = commands.add_parser(
-        "demo", help="No-key reviewer demo; separate partial onboarding and mock assessment"
+        "demo", aliases=["test"], help="Run no-key reviewer smoke tests and component validations"
     )
     demo.add_argument("--offline", action="store_true", help="Never fetch components/dependencies")
     verify = commands.add_parser(
@@ -74,10 +76,10 @@ def main(argv: list[str] | None = None) -> int:
             (args.components_dir or root / ".components").resolve(),
             (args.workspace or root / "workspace").resolve(),
         )
-        if args.command == "components":
+        if args.command in ("components", "init"):
             rows = []
             for item in ctx.components.values():
-                if args.fetch:
+                if args.command == "init" or args.fetch:
                     ensure_component(item, ctx.components_dir, offline=args.offline)
                 rows.append(asdict(item))
             result = {"components": rows}
@@ -98,7 +100,7 @@ def main(argv: list[str] | None = None) -> int:
                 "network_requests": False,
                 "note": "HTTP health and checkout availability do not prove investor readiness.",
             }
-        elif args.command == "demo":
+        elif args.command in ("demo", "test"):
             from .demo import demo
 
             report = demo(ctx, offline=args.offline)

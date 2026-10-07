@@ -5,7 +5,7 @@ This is an opt-in research workflow requiring reviewed evidence, coherent native
 Fetch all pinned sources, then install the required profile:
 
 ```bash
-uv run vclogic components --fetch
+uv run vclogic init
 uv run vclogic bootstrap --profile all
 ```
 
