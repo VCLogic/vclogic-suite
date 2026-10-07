@@ -7,11 +7,7 @@
 !src/**
 !manifests/
 !manifests/**
-!expected_outputs/
-!expected_outputs/**
 !docker/
-!expected_outputs/
-!expected_outputs/**
 !docker/**
 **/__pycache__/
 **/*.pyc

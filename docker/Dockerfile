@@ -12,7 +12,6 @@ WORKDIR /opt/vclogic
 COPY pyproject.toml uv.lock .python-version ./
 COPY src/ src/
 COPY manifests/ manifests/
-COPY expected_outputs/ expected_outputs/
 COPY README.md ./
 RUN uv sync --locked && uv run --no-sync vclogic bootstrap --profile core
 # The image contains only the lightweight locked component environments.

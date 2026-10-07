@@ -38,3 +38,9 @@ A web container/profile is deferred. Use the suite's native `bootstrap --profile
 ## Continuous integration
 
 `.github/workflows/ci.yml` pins checkout/setup-uv actions by full SHA, runs locked suite tests, bootstraps the real core revisions, enables integration tests with `VCLOGIC_INTEGRATION=1`, and builds/runs the offline Compose job. No model calls or provider credentials are needed. Upstream component regression suites and optional live/AV/browser tests are separate from this smoke test.
+
+## Executed container validation
+
+On 2026-10-07, the core image built and ran successfully using Docker 24.0.4 on Linux AMD64. The container's inspected settings confirmed network mode `none` and a read-only root filesystem. The report recorded 30.022 seconds for the staged demo; a second container verified the persisted run with `valid=true`. This is one local measurement, not a performance guarantee. The first built image occupied 1,616,914,215 bytes (about 1.51 GiB uncompressed), including exact source checkouts and their environments. No publication reproduction was available.
+
+The development environment uses a Docker daemon with its own host filesystem: the test bind mount at `/tmp/vclogic-docker-output` was accessible through Docker containers, not directly from the tool shell. Persistence was checked by the separate verification container and the report was copied out through `docker compose run … cat`. With a remote Docker daemon, bind paths refer to the daemon host; retrieve reports there or through a container. Ordinary local Docker installations expose `./workspace` directly on the local host.
