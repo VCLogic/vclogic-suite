@@ -1,0 +1,14 @@
+services:
+  core:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: vclogic-suite:core
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      UV_CACHE_DIR: /tmp/uv-cache
+    volumes:
+      - ./workspace:/workspace
