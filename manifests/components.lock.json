@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "python": "3.12.12",
+  "uv": "0.9.17",
+  "components": [
+    {
+      "id": "collector",
+      "repository": "https://github.com/VCLogic/vclogic-vc-trace-collector.git",
+      "commit": "71f5284882ca33d07e5f6874124beb1950d0f14c",
+      "directory": "vclogic-vc-trace-collector",
+      "package": "vc-trace-collector",
+      "version": "0.1.0",
+      "role": "Public trace discovery, collection and processing"
+    },
+    {
+      "id": "memory",
+      "repository": "https://github.com/VCLogic/vclogic-vc-investment-memory.git",
+      "commit": "050c2470fc49c2aff6961f8562fa224e8467c7cd",
+      "directory": "vclogic-vc-investment-memory",
+      "package": "vc-investment-memory",
+      "version": "0.2.0",
+      "role": "Cited investor memory generation and validation"
+    },
+    {
+      "id": "onboarding",
+      "repository": "https://github.com/VCLogic/vclogic-vc-inverstor-onboarding.git",
+      "commit": "ca5019881d0eb807effc108f575e76c0a033e35f",
+      "directory": "vclogic-vc-investor-onboarding",
+      "package": "vclogic-vc-investor-onboarding",
+      "version": "0.1.0",
+      "role": "Validated investor bundle preparation"
+    },
+    {
+      "id": "assessment",
+      "repository": "https://github.com/VCLogic/vclogic-vc-agentic-assessment.git",
+      "commit": "296dc55768ea60ce3da464ae6bfd1940bbfef5c9",
+      "directory": "vclogic-vc-agentic-assessment",
+      "package": "vclogic-vc-agentic-assessment",
+      "version": "0.1.0",
+      "role": "Rationale investigation, decision synthesis and rehearsal"
+    },
+    {
+      "id": "web",
+      "repository": "https://github.com/VCLogic/vclogic-web-application.git",
+      "commit": "013d862e0e595ea3414022731a5eb40b598e2e80",
+      "directory": "vclogic-web-application",
+      "package": "vclogic-web-application",
+      "version": "0.1.0",
+      "role": "Web interface and API consuming prepared investor assets"
+    }
+  ]
+}

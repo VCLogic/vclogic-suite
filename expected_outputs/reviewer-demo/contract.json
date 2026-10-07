@@ -1,0 +1,11 @@
+{
+  "schema_version": "vclogic-suite-expectations-v1",
+  "component_contract": "v1",
+  "rationale_required_fields": ["rationale_id", "label", "direction", "interpretation", "wiki_evidence_ids", "pitch_evidence"],
+  "decision_required_fields": ["decision", "investigation_sha256", "investment_likelihood", "decision_confidence", "controlling_rationale_ids"],
+  "allowed_decisions": ["In", "Out"],
+  "onboarding_ready_for_assessment": false,
+  "assessment_provider": "fake",
+  "publication_status": "unavailable",
+  "note": "These are suite smoke expectations, not replacements for component Pydantic schemas or publication metrics. No exact LLM wording is asserted."
+}

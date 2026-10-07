@@ -65,7 +65,7 @@ For an already prepared historical assessment, invoke the assessment environment
 For a new pitch, the suite adapter delegates to existing rehearsal start and requires explicit cost authorization:
 
 ```bash
-uv run vclogic assess --workspace /absolute/research/workspace --config /absolute/research/rehearsal.toml --investor <slug> --pitch /absolute/research/pitch.txt --allow-paid
+uv run vclogic assess --workspace /absolute/research/workspace --config /absolute/research/workspace/configs/rehearsal.toml --investor <slug> --pitch /absolute/research/pitch.txt --allow-paid
 ```
 
 Configure generation and embedding providers separately if required, export only their selected credential names, and prepare models/indexes first. `--allow-paid` authorizes the adapter's live path; it does not promise a budget or free local execution. Memory generation uses Codex authentication; OpenRouter/OpenAI assessment uses configured API-key names; local Ollama requires its own running service and weights. `.env.example` contains placeholders only.
@@ -74,13 +74,13 @@ Preserve investigation and decision JSON separately, their hash binding, retriev
 
 ## 5. Optionally launch the UI
 
-Build the existing frontend from the web checkout's `web/frontend` with `npm ci` and `npm run build`. The audit used Node 25.8.2/npm 11.11.1; the component README asks for Node 22.12+. See the pinned container implementation for its selected build runtime.
+Build the existing frontend from the web checkout's `web/frontend` with `npm ci` and `npm run build`. The audit used Node 25.8.2/npm 11.11.1; the component README asks for Node 22.12+. The core container deliberately omits Node; use a compatible local Node installation for the optional web build.
 
 Use a ready prepared workspace and native rehearsal config:
 
 ```bash
 uv run vclogic bootstrap --profile web
-uv run vclogic web --workspace /absolute/research/workspace --config /absolute/research/rehearsal.toml
+uv run vclogic web --workspace /absolute/research/workspace --config /absolute/research/workspace/configs/rehearsal.toml --allow-paid
 ```
 
-The UI uses the assessment engine and can make live provider calls when the user starts research actions. The default partial demo bundle does not meet its readiness requirements. HTTP health alone does not validate an investor. Preserve projects, sessions, settings, snapshots, checkpoints and outputs. See [Docker](docker.md) for optional container deployment and runtime credentials.
+The UI uses the assessment engine and can make live provider calls when the user starts research actions. The default partial demo bundle does not meet its readiness requirements. HTTP health alone does not validate an investor. Preserve projects, sessions, settings, snapshots, checkpoints and outputs. See [Docker](docker.md) for the core container and why a web container is not included in this release.
