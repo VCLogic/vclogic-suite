@@ -10,7 +10,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from .components import ensure_component, verify_component
-from .runtime import Context, bootstrap
+from .runtime import Context, bootstrap, progress
 
 
 def find_root(explicit: Path | None) -> Path:
@@ -33,18 +33,25 @@ def parser() -> argparse.ArgumentParser:
     components = commands.add_parser("components", help="List all exact component revisions")
     components.add_argument("--fetch", action="store_true", help="Fetch all pinned revisions")
     components.add_argument("--offline", action="store_true")
-    init = commands.add_parser("init", help="Fetch and verify all five pinned repositories")
-    init.add_argument("--offline", action="store_true", help="Only verify existing checkouts")
+    init = commands.add_parser(
+        "init", help="Fetch all repositories and install locked dependencies"
+    )
+    init.add_argument(
+        "--offline", action="store_true", help="Use only local repositories and cached dependencies"
+    )
+    init.add_argument("--profile", choices=("core", "web", "all"), default="core")
     setup = commands.add_parser(
         "bootstrap", help="Fetch components and install locked environments"
     )
     setup.add_argument("--profile", choices=("core", "web", "all"), default="core")
     setup.add_argument("--offline", action="store_true")
     commands.add_parser("doctor", help="Inspect local tools/checkouts without external requests")
-    demo = commands.add_parser(
-        "demo", aliases=["test"], help="Run no-key reviewer smoke tests and component validations"
-    )
+    demo = commands.add_parser("demo", help="Set up and run the no-key reviewer demonstration")
     demo.add_argument("--offline", action="store_true", help="Never fetch components/dependencies")
+    test = commands.add_parser("test", help="Run no-key validations; requires vclogic init")
+    test.add_argument(
+        "--offline", action="store_true", help="Compatibility flag; tests never install"
+    )
     verify = commands.add_parser(
         "verify", help="Revalidate a saved demo through component validators"
     )
@@ -76,10 +83,14 @@ def main(argv: list[str] | None = None) -> int:
             (args.components_dir or root / ".components").resolve(),
             (args.workspace or root / "workspace").resolve(),
         )
-        if args.command in ("components", "init"):
+        if args.command == "init":
+            for name in progress(ctx.components, "Fetch repositories"):
+                ensure_component(ctx.components[name], ctx.components_dir, offline=args.offline)
+            result = bootstrap(ctx, args.profile, offline=args.offline)
+        elif args.command == "components":
             rows = []
             for item in ctx.components.values():
-                if args.command == "init" or args.fetch:
+                if args.fetch:
                     ensure_component(item, ctx.components_dir, offline=args.offline)
                 rows.append(asdict(item))
             result = {"components": rows}
@@ -103,7 +114,7 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command in ("demo", "test"):
             from .demo import demo
 
-            report = demo(ctx, offline=args.offline)
+            report = demo(ctx, offline=args.offline, setup=args.command != "test")
             result = {
                 key: report[key]
                 for key in (

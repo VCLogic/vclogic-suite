@@ -8,11 +8,14 @@ from time import monotonic
 from uuid import uuid4
 
 from .files import copy_verified, digest, inventory, write_json
-from .runtime import Context, bootstrap, component_command
+from .runtime import Context, bootstrap, component_command, require_core
 
 
-def demo(ctx: Context, *, offline: bool = False) -> dict:
-    bootstrap(ctx, offline=offline)
+def demo(ctx: Context, *, offline: bool = False, setup: bool = True) -> dict:
+    if setup:
+        bootstrap(ctx, offline=offline)
+    else:
+        require_core(ctx)
     artifacts = json.loads((ctx.root / "manifests/reviewer-artifacts.json").read_text())
     expectations_path = ctx.root / "expected_outputs/reviewer-demo/contract.json"
     expectations = json.loads(expectations_path.read_text())

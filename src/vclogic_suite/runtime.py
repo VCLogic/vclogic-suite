@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -113,22 +114,47 @@ def environment_stamp(ctx: Context, name: str) -> dict:
     }
 
 
+def progress(items, label):
+    """Report completed steps, not estimated bytes or installation time."""
+    items = list(items)
+    total = len(items)
+    for index, item in enumerate(items):
+        bar = "#" * index + "-" * (total - index)
+        print(f"{label} [{bar}] {index}/{total}: {item}", file=sys.stderr, flush=True)
+        yield item
+    print(f"{label} [{'#' * total}] {total}/{total}: complete", file=sys.stderr, flush=True)
+
+
+def require_core(ctx: Context) -> None:
+    """Check setup receipts without fetching or installing anything."""
+    try:
+        for name in CORE:
+            project = ctx.checkout(name)
+            if name == "memory":
+                continue
+            receipt = project / ".venv/vclogic-suite-environment.json"
+            if not receipt.is_file() or json.loads(receipt.read_text()) != environment_stamp(
+                ctx, name
+            ):
+                raise ValueError(f"Missing or stale {name} environment")
+    except (ValueError, OSError) as error:
+        raise ValueError(f"Reviewer setup incomplete: {error}. Run uv run vclogic init") from error
+
+
 def bootstrap(ctx: Context, profile: str = "core", *, offline: bool = False) -> dict:
     if shutil.which("uv") is None or shutil.which("git") is None:
         raise ValueError("Install uv and Git before bootstrap")
     selected = PROFILES[profile]
-    for name in selected:
-        print(f"Checking pinned {name}...", flush=True)
+    for name in progress(selected, "Verify repositories"):
         ensure_component(ctx.components[name], ctx.components_dir, offline=offline)
-    for name in selected:
-        if name == "memory":
-            continue  # Validator is installed by onboarding's existing uv lock.
+    for name in progress((name for name in selected if name != "memory"), "Install dependencies"):
+        # Memory validator is installed by onboarding's existing uv lock.
         project = ctx.checkout(name)
         receipt = project / ".venv/vclogic-suite-environment.json"
         stamp = environment_stamp(ctx, name)
         if receipt.is_file() and json.loads(receipt.read_text()) == stamp:
             continue
-        print(f"Installing locked {name} environment...", flush=True)
+        print(f"Installing locked {name} environment...", file=sys.stderr, flush=True)
         command = ["uv", "sync", "--locked", "--no-dev", "--python", "3.12.12"]
         if offline:
             command.append("--offline")
@@ -150,7 +176,7 @@ def bootstrap(ctx: Context, profile: str = "core", *, offline: bool = False) -> 
                 raise ValueError(
                     "Web assets missing in offline mode; bootstrap --profile web online"
                 )
-            print("Building pinned web frontend with npm ci...", flush=True)
+            print("Building pinned web frontend with npm ci...", file=sys.stderr, flush=True)
             run(
                 ["npm", "ci", "--no-audit", "--no-fund"],
                 cwd=frontend,

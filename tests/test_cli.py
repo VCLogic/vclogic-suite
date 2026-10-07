@@ -36,31 +36,31 @@ def test_cli_help_lists_public_commands():
         assert command in result.stdout
 
 
-def test_init_fetches_all_pins_without_installing_environments(monkeypatch, tmp_path, capsys):
+def test_init_fetches_all_pins_and_installs_core(monkeypatch, tmp_path, capsys):
     from vclogic_suite import cli
 
-    fetched = []
-    def fetch(item, directory, **kw):
-        fetched.append((item, directory, kw))
+    fetched, installed = [], []
+    monkeypatch.setattr(
+        cli, "ensure_component", lambda item, directory, **kw: fetched.append(item.id)
+    )
 
-    def unexpected_install(*args, **kwargs):
-        raise AssertionError("init must only fetch")
+    def install(ctx, profile, **kwargs):
+        installed.append((profile, kwargs))
+        return {"ready": True}
 
-    monkeypatch.setattr(cli, "ensure_component", fetch)
-    monkeypatch.setattr(cli, "bootstrap", unexpected_install)
-    assert cli.main(["--root", str(ROOT), "--components-dir", str(tmp_path), "init", "--offline"]) == 0
+    monkeypatch.setattr(cli, "bootstrap", install)
+    assert cli.main(["--root", str(ROOT), "--components-dir", str(tmp_path), "init"]) == 0
     assert len(fetched) == 5
-    assert all(directory == tmp_path and kw == {"offline": True} for _, directory, kw in fetched)
-    assert len(json.loads(capsys.readouterr().out)["components"]) == 5
+    assert installed == [("core", {"offline": False})]
+    assert json.loads(capsys.readouterr().out)["ready"]
 
 
-def test_test_runs_reviewer_validations_and_propagates_failure(monkeypatch, capsys):
+def test_test_never_bootstraps_missing_installation(monkeypatch, tmp_path, capsys):
     from vclogic_suite import cli, demo
 
-    def fail(ctx, *, offline):
-        assert offline is True
-        raise ValueError("fixture validation failed")
+    def forbidden(*args, **kwargs):
+        raise AssertionError("test must not fetch or install")
 
-    monkeypatch.setattr(demo, "demo", fail)
-    assert cli.main(["--root", str(ROOT), "test", "--offline"]) == 1
-    assert "fixture validation failed" in capsys.readouterr().err
+    monkeypatch.setattr(demo, "bootstrap", forbidden)
+    assert cli.main(["--root", str(ROOT), "--components-dir", str(tmp_path), "test"]) == 1
+    assert "vclogic init" in capsys.readouterr().err

@@ -19,7 +19,7 @@ docker compose up --build
 
 The container runs the demo with networking disabled after its build. A warm demo took approximately 30 seconds on the audited Linux host; initial source/dependency downloads take longer. Successful execution prints `Validation passed` and leaves separate rationale and In/Out artifacts with evidence links. See [Docker](docs/docker.md) for image size and limitations.
 
-`uv sync` installs the suite CLI. `vclogic init` fetches all five repositories at their pinned revisions into `.components/`, verifying existing checkouts on repeat runs. It does not install component dependencies. `vclogic test` installs the core locked environments and runs the existing reviewer demo, component validators, and provenance checks; it can also fetch missing core repositories. It needs network access for setup, but no API keys, model weights or GPU. After setup, use `uv run vclogic test --offline`. Runtime and download size depend on caches and platform; no cold-start duration is promised.
+`uv sync` installs the suite CLI. `vclogic init` fetches all five repositories at their pinned revisions into `.components/`, verifying existing checkouts on repeat runs. It also installs the locked CPU reviewer dependencies, showing a step-based progress bar for repository fetching and environment installation. Use `init --profile web` to include web dependencies and the frontend build, or `init --profile all` for all component environments (optional AV extras and model weights are not installed). `vclogic test` only runs the no-key smoke workflow, component validators, and provenance checks. It never fetches repositories or installs dependencies; missing or stale setup produces an instruction to run `init`. It needs network access for setup, but no API keys, model weights or GPU. After setup, use `uv run vclogic test --offline`. Runtime and download size depend on caches and platform; no cold-start duration is promised.
 
 The demo validates a frozen Elizabeth Yin memory with the real validator, recomputes wiki-only onboarding, and runs the existing scripted Elizabeth/Thoras assessment example **in a separate workspace against its original input snapshot**. The new onboarding bundle is valid but **not assessment-ready** because indexes are deliberately skipped. The assessment uses a fake provider and contract v1. These stages are not a continuous same-snapshot pipeline and do not reproduce a publication’s findings.
 
@@ -47,7 +47,7 @@ Source URLs, full commits and local aliases are in [the component manifest](mani
 
 ```bash
 uv run vclogic components             # inspect exact pins
-uv run vclogic init                  # fetch all five components
+uv run vclogic init                   # fetch all five; install reviewer dependencies
 uv run vclogic bootstrap --profile core
 uv run vclogic doctor
 ```
