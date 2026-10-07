@@ -36,7 +36,7 @@ def test_cli_help_lists_public_commands():
         assert command in result.stdout
 
 
-def test_init_fetches_all_pins_and_installs_core(monkeypatch, tmp_path, capsys):
+def test_init_fetches_all_pins_and_installs_all(monkeypatch, tmp_path, capsys):
     from vclogic_suite import cli
 
     fetched, installed = [], []
@@ -51,7 +51,7 @@ def test_init_fetches_all_pins_and_installs_core(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(cli, "bootstrap", install)
     assert cli.main(["--root", str(ROOT), "--components-dir", str(tmp_path), "init"]) == 0
     assert len(fetched) == 5
-    assert installed == [("core", {"offline": False})]
+    assert installed == [("all", {"offline": False})]
     assert json.loads(capsys.readouterr().out)["ready"]
 
 
@@ -64,3 +64,10 @@ def test_test_never_bootstraps_missing_installation(monkeypatch, tmp_path, capsy
     monkeypatch.setattr(demo, "bootstrap", forbidden)
     assert cli.main(["--root", str(ROOT), "--components-dir", str(tmp_path), "test"]) == 1
     assert "vclogic init" in capsys.readouterr().err
+
+
+def test_init_allows_tailored_profiles():
+    from vclogic_suite.cli import parser
+
+    for profile in ("core", "web", "all"):
+        assert parser().parse_args(["init", "--profile", profile]).profile == profile

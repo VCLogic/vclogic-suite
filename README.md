@@ -2,7 +2,7 @@
 
 VCLogic studies an evidence-grounded approximation of an investor’s observable evaluative logic. Reconstructing investment rationales and predicting investment decisions are separate research tasks. This repository coordinates five existing components at exact Git revisions; their scientific logic stays in their own repositories.
 
-Run the no-key software demonstration with Python **3.12.12**, **uv 0.9.17**, and Git installed:
+Run the no-key software demonstration with Python **3.12.12**, **uv 0.9.17**, Git, and Node.js/npm installed:
 
 ```bash
 uv sync
@@ -19,7 +19,7 @@ docker compose up --build
 
 The container runs the demo with networking disabled after its build. A warm demo took approximately 30 seconds on the audited Linux host; initial source/dependency downloads take longer. Successful execution prints `Validation passed` and leaves separate rationale and In/Out artifacts with evidence links. See [Docker](docs/docker.md) for image size and limitations.
 
-`uv sync` installs the suite CLI. `vclogic init` fetches all five repositories at their pinned revisions into `.components/`, verifying existing checkouts on repeat runs. It also installs the locked CPU reviewer dependencies, showing a step-based progress bar for repository fetching and environment installation. Use `init --profile web` to include web dependencies and the frontend build, or `init --profile all` for all component environments (optional AV extras and model weights are not installed). `vclogic test` only runs the no-key smoke workflow, component validators, and provenance checks. It never fetches repositories or installs dependencies; missing or stale setup produces an instruction to run `init`. It needs network access for setup, but no API keys, model weights or GPU. After setup, use `uv run vclogic test --offline`. Runtime and download size depend on caches and platform; no cold-start duration is promised.
+`uv sync` installs the suite CLI. `vclogic init` fetches all five repositories at their pinned revisions into `.components/`, verifying existing checkouts on repeat runs. By default it installs all component environments and builds the web frontend, showing step-based progress. Use `init --profile core` for only the CPU reviewer dependencies, or `init --profile web` for reviewer and web dependencies without the collector environment. All profiles fetch all five repositories. Optional AV extras and model weights are not installed. `vclogic test` only runs the no-key smoke workflow, component validators, and provenance checks. It never fetches repositories or installs dependencies; missing or stale setup produces an instruction to run `init`. It needs network access for setup, but no API keys, model weights or GPU. After setup, use `uv run vclogic test --offline`. Runtime and download size depend on caches and platform; no cold-start duration is promised.
 
 The demo validates a frozen Elizabeth Yin memory with the real validator, recomputes wiki-only onboarding, and runs the existing scripted Elizabeth/Thoras assessment example **in a separate workspace against its original input snapshot**. The new onboarding bundle is valid but **not assessment-ready** because indexes are deliberately skipped. The assessment uses a fake provider and contract v1. These stages are not a continuous same-snapshot pipeline and do not reproduce a publication’s findings.
 
@@ -47,7 +47,7 @@ Source URLs, full commits and local aliases are in [the component manifest](mani
 
 ```bash
 uv run vclogic components             # inspect exact pins
-uv run vclogic init                   # fetch all five; install reviewer dependencies
+uv run vclogic init                   # fetch all five; install all environments
 uv run vclogic bootstrap --profile core
 uv run vclogic doctor
 ```

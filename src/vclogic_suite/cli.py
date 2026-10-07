@@ -39,7 +39,12 @@ def parser() -> argparse.ArgumentParser:
     init.add_argument(
         "--offline", action="store_true", help="Use only local repositories and cached dependencies"
     )
-    init.add_argument("--profile", choices=("core", "web", "all"), default="core")
+    init.add_argument(
+        "--profile",
+        choices=("core", "web", "all"),
+        default="all",
+        help="Dependencies to install (default: all)",
+    )
     setup = commands.add_parser(
         "bootstrap", help="Fetch components and install locked environments"
     )
