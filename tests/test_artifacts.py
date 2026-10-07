@@ -56,3 +56,15 @@ def test_web_command_checks_editable_assessment_dependency(tmp_path):
     (tmp_path / ".venv").mkdir()
     with pytest.raises(ValueError, match="assessment is modified"):
         component_command(Context(), "web", ["python", "-c", "pass"], cwd=tmp_path)
+
+
+def test_no_key_demo_disables_inherited_langsmith_tracing(monkeypatch):
+    from vclogic_suite.runtime import execution_environment
+
+    monkeypatch.setenv("LANGSMITH_TRACING_V2", "true")
+    monkeypatch.setenv("LANGCHAIN_TRACING_V2", "true")
+    monkeypatch.setenv("LANGSMITH_TRACING", "true")
+    env = execution_environment(no_keys=True)
+    assert env["LANGSMITH_TRACING_V2"] == "false"
+    assert env["LANGCHAIN_TRACING_V2"] == "false"
+    assert env["LANGSMITH_TRACING"] == "false"

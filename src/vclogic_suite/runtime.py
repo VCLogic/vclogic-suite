@@ -42,7 +42,15 @@ def execution_environment(*, no_keys: bool = False) -> dict[str, str]:
             for k, v in env.items()
             if not any(word in k.upper() for word in ("TOKEN", "SECRET", "PASSWORD", "API_KEY"))
         }
-        env.update(HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1", HF_HUB_DISABLE_TELEMETRY="1")
+        env.update(
+            HF_HUB_OFFLINE="1",
+            TRANSFORMERS_OFFLINE="1",
+            HF_HUB_DISABLE_TELEMETRY="1",
+            LANGSMITH_TRACING="false",
+            LANGSMITH_TRACING_V2="false",
+            LANGCHAIN_TRACING="false",
+            LANGCHAIN_TRACING_V2="false",
+        )
     env.update(
         UV_NO_PROGRESS="1",
         OPENBLAS_NUM_THREADS="1",
