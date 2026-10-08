@@ -35,3 +35,17 @@ These checks do not claim successful live discovery, paid memory generation,
 embedding model downloads, or a new investor's live assessment. Those require
 provider authentication, operator review, optional dependencies and native research
 configuration. No component source was modified.
+
+## Full init defaults (2026-10-08)
+
+Plain `init` now enables locked collector browser/YouTube/AV/local AV extras,
+assessment embeddings/personalized extras, onboarding/web embeddings, and
+hash-pinned PDF extraction. Full setup installs Chromium and checks host tools.
+Tailored profiles and the core Docker setup retain their smaller dependencies.
+
+Validation: 33 unit/contract tests passed, two opt-in integration tests skipped;
+all four component extra selections resolved via `uv sync --locked --dry-run`.
+The supplemental PDF lock passed a hash-enforced installation dry run. Tests cover
+upgrading existing base receipts, offline reuse, and missing host tool reporting.
+The large full environment and model downloads were not executed for this change;
+resolution success does not establish GPU driver compatibility or gated access.

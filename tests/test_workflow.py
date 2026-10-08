@@ -196,3 +196,12 @@ def test_no_key_environment_disables_component_dotenv(monkeypatch):
 
     monkeypatch.setenv("PYTHON_DOTENV_DISABLED", "0")
     assert execution_environment(no_keys=True)["PYTHON_DOTENV_DISABLED"] == "1"
+
+
+def test_full_profile_extras_cover_components():
+    from vclogic_suite.runtime import FULL_EXTRAS
+
+    assert set(FULL_EXTRAS["collector"]) == {"browser", "youtube", "av", "av-local"}
+    assert {"embeddings", "personalized"} <= set(FULL_EXTRAS["assessment"])
+    assert FULL_EXTRAS["onboarding"] == ["embeddings"]
+    assert FULL_EXTRAS["web"] == ["embeddings"]

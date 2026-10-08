@@ -6,7 +6,7 @@ Run the no-key software demonstration with Python **3.12.12**, **uv 0.9.17**, Gi
 
 ```bash
 uv sync
-uv run vclogic init
+uv run vclogic init --profile core
 uv run vclogic test
 ```
 
@@ -19,7 +19,7 @@ docker compose up --build
 
 The container runs the demo with networking disabled after its build. A warm demo took approximately 30 seconds on the audited Linux host; initial source/dependency downloads take longer. Successful execution prints `Validation passed` and leaves separate rationale and In/Out artifacts with evidence links. See [Docker](docs/docker.md) for image size and limitations.
 
-`uv sync` installs the suite CLI. `vclogic init` fetches all five repositories at their pinned revisions into `.components/`, verifying existing checkouts on repeat runs. By default it installs all component environments and builds the web frontend, showing step-based progress. Use `init --profile core` for only the CPU reviewer dependencies, or `init --profile web` for reviewer and web dependencies without the collector environment. All profiles fetch all five repositories. Optional AV extras and model weights are not installed. `vclogic test` only runs the no-key smoke workflow, component validators, and provenance checks. It never fetches repositories or installs dependencies; missing or stale setup produces an instruction to run `init`. It needs network access for setup, but no API keys, model weights or GPU. After setup, use `uv run vclogic test --offline`. Runtime and download size depend on caches and platform; no cold-start duration is promised.
+`uv sync` installs the suite CLI. `vclogic init` fetches all five repositories at their pinned revisions into `.components/`, verifying existing checkouts on repeat runs. Plain `init` installs the full research dependency set: embedding libraries, personalized assessment libraries, collector browser/YouTube/Whisper/pyannote support, PDF extraction, Chromium, and the web frontend. It shows step-based progress. Use `init --profile core` for only the CPU reviewer dependencies, or `init --profile web` for reviewer and web dependencies without the collector environment. All profiles fetch all five repositories. Full setup is substantially larger than the reviewer profile. Model weights are downloaded when their configured models are used; authentication and gated-model access remain operator prerequisites. Full setup reports missing system tools and exits nonzero if required tools or Chromium are unavailable. `vclogic test` only runs the no-key smoke workflow, component validators, and provenance checks. It never fetches repositories or installs dependencies; missing or stale setup produces an instruction to run `init`. It needs network access for setup, but no API keys, model weights or GPU. After setup, use `uv run vclogic test --offline`. Runtime and download size depend on caches and platform; no cold-start duration is promised.
 
 The demo validates a frozen Elizabeth Yin memory with the real validator, recomputes wiki-only onboarding, and runs the existing scripted Elizabeth/Thoras assessment example **in a separate workspace against its original input snapshot**. The new onboarding bundle is valid but **not assessment-ready** because indexes are deliberately skipped. The assessment uses a fake provider and contract v1. These stages are not a continuous same-snapshot pipeline and do not reproduce a publication’s findings.
 

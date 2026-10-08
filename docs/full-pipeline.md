@@ -13,7 +13,7 @@ is disabled for these subprocesses. No credentials are copied into checkouts or
 run reports. No-key `test`, `demo`, and `verify` do not load `.env`.
 
 ```bash
-uv run vclogic init --embeddings
+uv run vclogic init
 uv run vclogic discover --name "Investor Name"
 # Use the actual slug printed by discovery in the commands below:
 uv run vclogic collect --investor investor-slug
@@ -81,10 +81,20 @@ can download the pinned embedding model. Pitch Show extraction can use paid
 inference and requires `--allow-paid`; `--collect-only` avoids extraction but can
 still access public websites.
 
-`init --embeddings` installs existing locked embedding extras in selected
-onboarding, assessment and web environments; model weights load later when used.
-AV extras, ffmpeg, authenticated Codex CLI, local provider services, and human
-review remain explicit prerequisites. Initialization does not provision these.
+Plain `init` installs all locked component extras needed for the research workflow:
+embeddings, personalized assessment, collector browser/YouTube/AV/Whisper/pyannote,
+plus PDF extraction from `configs/memory-pdf.lock`. It downloads Chromium and
+builds the web frontend. `init --embeddings` remains accepted and is equivalent
+with the default all profile. `init --profile core` is the smaller no-model reviewer
+installation; add `--embeddings` to core or web when semantic indexing is needed.
+
+Model weights load later according to the selected models. Full initialization
+checks ffmpeg, Node/npm, Codex, Agent Reach and mcporter and verifies Chromium can
+launch. Missing prerequisites are reported with a nonzero exit, after retaining
+successful setup work. It does not run sudo or silently install global system
+software. Authenticate Codex/provider services, accept gated model licenses, and
+configure external Agent Reach backends before their first use. CUDA drivers and
+local provider services remain host-specific. No setup command performs inference.
 The commands were validated with mocks and a real frozen-memory partial onboarding
 run; no live public-data collection or paid generation was executed as a test.
 

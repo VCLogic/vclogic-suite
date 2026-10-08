@@ -34,7 +34,7 @@ def parser() -> argparse.ArgumentParser:
     components.add_argument("--fetch", action="store_true", help="Fetch all pinned revisions")
     components.add_argument("--offline", action="store_true")
     init = commands.add_parser(
-        "init", help="Fetch all repositories and install locked dependencies"
+        "init", help="Install the full research stack (use --profile core for smoke tests)"
     )
     init.add_argument(
         "--offline", action="store_true", help="Use only local repositories and cached dependencies"
@@ -48,7 +48,7 @@ def parser() -> argparse.ArgumentParser:
     init.add_argument(
         "--embeddings",
         action="store_true",
-        help="Install native embedding extras for onboarding, assessment and web",
+        help="Add embeddings to tailored profiles; already included in default full setup",
     )
     setup = commands.add_parser(
         "bootstrap", help="Fetch components and install locked environments"
@@ -110,7 +110,11 @@ def main(argv: list[str] | None = None) -> int:
                 ctx,
                 args.profile,
                 offline=args.offline,
-                **({"embeddings": True} if args.embeddings else {}),
+                **(
+                    {"full": True}
+                    if args.profile == "all"
+                    else ({"embeddings": True} if args.embeddings else {})
+                ),
             )
         elif args.command == "components":
             rows = []
@@ -162,7 +166,7 @@ def main(argv: list[str] | None = None) -> int:
             with research_environment(ctx.root):
                 return run_stage(ctx, args) if args.command in STAGES else launch(ctx, args)
         print(json.dumps(result, indent=2))
-        return 0
+        return 0 if result.get("ready", True) else 1
     except (ValueError, OSError, KeyError, TypeError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

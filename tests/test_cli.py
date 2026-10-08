@@ -51,7 +51,7 @@ def test_init_fetches_all_pins_and_installs_all(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(cli, "bootstrap", install)
     assert cli.main(["--root", str(ROOT), "--components-dir", str(tmp_path), "init"]) == 0
     assert len(fetched) == 5
-    assert installed == [("all", {"offline": False})]
+    assert installed == [("all", {"offline": False, "full": True})]
     assert json.loads(capsys.readouterr().out)["ready"]
 
 

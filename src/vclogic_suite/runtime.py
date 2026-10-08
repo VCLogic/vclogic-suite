@@ -13,6 +13,13 @@ from pathlib import Path
 from .components import Component, ensure_component, load_components, verify_component
 from .files import digest, write_json
 
+FULL_EXTRAS = {
+    "collector": ["browser", "youtube", "av", "av-local"],
+    "assessment": ["embeddings", "personalized"],
+    "onboarding": ["embeddings"],
+    "web": ["embeddings"],
+}
+
 CORE = ("memory", "assessment", "onboarding")
 PROFILES = {"core": CORE, "web": (*CORE, "web"), "all": (*CORE, "web", "collector")}
 
@@ -143,11 +150,18 @@ def require_core(ctx: Context) -> None:
 
 
 def bootstrap(
-    ctx: Context, profile: str = "core", *, offline: bool = False, embeddings: bool = False
+    ctx: Context,
+    profile: str = "core",
+    *,
+    offline: bool = False,
+    embeddings: bool = False,
+    full: bool = False,
 ) -> dict:
     if shutil.which("uv") is None or shutil.which("git") is None:
         raise ValueError("Install uv and Git before bootstrap")
     selected = PROFILES[profile]
+    if "web" in selected and any(shutil.which(tool) is None for tool in ("node", "npm")):
+        raise ValueError("Install Node.js and npm for the web frontend, or use init --profile core")
     for name in progress(selected, "Verify repositories"):
         ensure_component(ctx.components[name], ctx.components_dir, offline=offline)
     for name in progress((name for name in selected if name != "memory"), "Install dependencies"):
@@ -156,10 +170,27 @@ def bootstrap(
         receipt = project / ".venv/vclogic-suite-environment.json"
         stamp = environment_stamp(ctx, name)
         extra_receipt = project / ".venv/vclogic-suite-embeddings.json"
-        needs_embeddings = embeddings and name in {"onboarding", "assessment", "web"}
+        needs_embeddings = (embeddings or full) and name in {"onboarding", "assessment", "web"}
+        extras = FULL_EXTRAS.get(name, []) if full else (["embeddings"] if needs_embeddings else [])
+        full_receipt = project / ".venv/vclogic-suite-full.json"
+        full_stamp = (
+            {
+                "environment": stamp,
+                "extras": extras,
+                "pdf_lock": digest(ctx.root / "configs/memory-pdf.lock")
+                if name == "onboarding"
+                else None,
+            }
+            if full
+            else None
+        )
         if (
             receipt.is_file()
             and json.loads(receipt.read_text()) == stamp
+            and (
+                not full
+                or (full_receipt.is_file() and json.loads(full_receipt.read_text()) == full_stamp)
+            )
             and (
                 not needs_embeddings
                 or (extra_receipt.is_file() and json.loads(extra_receipt.read_text()) == stamp)
@@ -168,12 +199,30 @@ def bootstrap(
             continue
         print(f"Installing locked {name} environment...", file=sys.stderr, flush=True)
         command = ["uv", "sync", "--locked", "--no-dev", "--python", "3.12.12"]
-        if needs_embeddings:
-            command.extend(["--extra", "embeddings"])
+        for extra in extras:
+            command.extend(["--extra", extra])
         if offline:
             command.append("--offline")
         run(command, cwd=project, log=ctx.workspace / "setup-logs" / f"{name}.log")
+        # Invalidate receipts before auxiliary setup so interrupted upgrades are retried.
+        full_receipt.unlink(missing_ok=True)
+        if full and name == "onboarding":
+            pdf_command = [
+                "uv",
+                "pip",
+                "install",
+                "--python",
+                str(project / ".venv/bin/python"),
+                "--require-hashes",
+                "-r",
+                str(ctx.root / "configs/memory-pdf.lock"),
+            ]
+            if offline:
+                pdf_command.append("--offline")
+            run(pdf_command, cwd=project, log=ctx.workspace / "setup-logs/memory-pdf.log")
         write_json(receipt, stamp)
+        if full:
+            write_json(full_receipt, full_stamp)
         if needs_embeddings:
             write_json(extra_receipt, stamp)
         else:
@@ -206,4 +255,67 @@ def bootstrap(
                 log=ctx.workspace / "setup-logs/npm-build.log",
             )
             write_json(receipt, stamp)
-    return {"profile": profile, "components": list(selected), "ready": True}
+    result = {"profile": profile, "components": list(selected), "ready": True}
+    if full:
+        # Chromium assets are pinned by the component's locked Playwright version.
+        collector = ctx.checkout("collector")
+        if not offline:
+            print("Installing Chromium browser assets...", file=sys.stderr, flush=True)
+            run(
+                [
+                    "uv",
+                    "run",
+                    "--offline",
+                    "--no-sync",
+                    "--project",
+                    str(collector),
+                    "playwright",
+                    "install",
+                    "chromium",
+                ],
+                cwd=collector,
+                log=ctx.workspace / "setup-logs/browser-install.log",
+            )
+        print("Checking browser and host prerequisites...", file=sys.stderr, flush=True)
+        browser_ok = True
+        try:
+            run(
+                [
+                    "uv",
+                    "run",
+                    "--offline",
+                    "--no-sync",
+                    "--project",
+                    str(collector),
+                    "python",
+                    "-c",
+                    "from playwright.sync_api import sync_playwright; p=sync_playwright().start(); b=p.chromium.launch(headless=True); b.close(); p.stop()",
+                ],
+                cwd=collector,
+                log=ctx.workspace / "setup-logs/browser-check.log",
+            )
+        except ValueError:
+            browser_ok = False
+        requirements = {
+            "ffmpeg": "Install ffmpeg with your operating system package manager.",
+            "node": "Install a Node.js version supported by the web component.",
+            "npm": "Install npm with Node.js.",
+            "codex": "Install and authenticate Codex CLI for memory generation.",
+            "agent-reach": "Install Agent Reach for the collector's portfolio search route.",
+            "mcporter": "Install and configure mcporter for Agent Reach's Exa backend.",
+        }
+        missing = {
+            name: advice for name, advice in requirements.items() if shutil.which(name) is None
+        }
+        if not browser_ok:
+            missing["chromium"] = (
+                "Inspect workspace/setup-logs/browser-check.log; install missing browser system libraries, then rerun init."
+            )
+        result.update(
+            full=True,
+            installed_extras=FULL_EXTRAS,
+            missing_prerequisites=missing,
+            ready=not missing,
+            authentication_and_models="Not verified: authenticate Codex and providers, accept gated model licenses; selected weights download on first use.",
+        )
+    return result
