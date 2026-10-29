@@ -71,7 +71,8 @@ evidence IDs. Do not invent scores the output does not contain.
 ## Web interface
 
 `uv run vclogic web --allow-paid` serves the UI (port from `vclogic.toml`) for all
-installed investors. It runs until stopped, so start it in the background.
+installed investors. It runs until stopped, so start it in the background. Newly onboarded
+investors appear without a restart.
 
 ## When something fails
 

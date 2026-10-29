@@ -100,7 +100,9 @@ uv run vclogic web --allow-paid
 
 The command serves every installed investor at `http://localhost:8000` (or the
 port set by `[web] port` in `vclogic.toml`). Assessments and rehearsals can also
-be started there. Restart the server after onboarding another investor.
+be started there. Leave it running. An investor onboarded by `vclogic run` or
+`vclogic onboard` appears in the list without a restart. For a few seconds after
+startup the list can be empty while the catalog validates the installed indexes.
 
 ### 5. Agent skill
 
