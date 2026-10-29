@@ -23,6 +23,11 @@ or [Claude Code](https://code.claude.com/docs/en/setup). `init` reports it as a
 missing prerequisite when neither is on `PATH`. For audio and video sources, set
 `HF_TOKEN` in `.env` and accept the gated pyannote models on Hugging Face.
 
+The wizard's Agent Reach/Exa search runs through `mcporter` with an `exa` server.
+Behind an HTTP(S) proxy, set `NODE_USE_ENV_PROXY=1` in `.env`, then check it with
+`NODE_USE_ENV_PROXY=1 mcporter list`, which should show `exa` as healthy. Otherwise,
+pick the default search backend in the wizard. The `agent-reach` executable is optional.
+
 ### 1. Two configuration files
 
 | File | Holds | Committed |

@@ -30,13 +30,13 @@ def test_full_setup_upgrades_caches_and_reports_missing_host_tools(tmp_path, mon
     monkeypatch.setattr(runtime, "fetch_fixtures", lambda *a, **kw: None)
     monkeypatch.setattr(runtime, "environment_stamp", lambda *a: stamp)
     monkeypatch.setattr(
-        runtime.shutil, "which", lambda name: None if name == "agent-reach" else name
+        runtime.shutil, "which", lambda name: None if name == "mcporter" else name
     )
     calls = []
     monkeypatch.setattr(runtime, "run", lambda command, **kw: calls.append((command, kw)))
     report = runtime.bootstrap(ctx, "all", full=True)
     assert report["ready"] is False
-    assert set(report["missing_prerequisites"]) == {"agent-reach"}
+    assert set(report["missing_prerequisites"]) == {"mcporter"}
     syncs = {kw["cwd"].name: command for command, kw in calls if command[:2] == ["uv", "sync"]}
     assert len(syncs) == 4
     for name, extras in runtime.FULL_EXTRAS.items():

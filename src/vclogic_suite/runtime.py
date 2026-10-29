@@ -318,8 +318,8 @@ def bootstrap(
             "ffmpeg": "Install ffmpeg with your operating system package manager.",
             "node": "Install a Node.js version supported by the web component.",
             "npm": "Install npm with Node.js.",
-            "agent-reach": "Install Agent Reach for the collector's portfolio search route.",
-            "mcporter": "Install and configure mcporter for Agent Reach's Exa backend.",
+            # The wizard searches Exa through mcporter; the agent-reach binary is optional diagnostics.
+            "mcporter": "Install mcporter with an Exa server for the collector's Agent Reach/Exa search.",
         }
         missing = {
             name: advice for name, advice in requirements.items() if shutil.which(name) is None
