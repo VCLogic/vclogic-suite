@@ -300,3 +300,16 @@ def test_run_stops_when_collection_unfinished(tmp_path, monkeypatch, capsys):
     assert "--investor jane-roe" in capsys.readouterr().out
     with pytest.raises(ValueError, match="allow-paid"):
         workflow.run_stage(ctx, parser().parse_args(["run", "--name", "Jane Roe"]))
+
+
+def test_proxy_without_opt_in_warns(monkeypatch):
+    from vclogic_suite.workflow import proxy_warnings
+
+    for name in ("HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.delenv("VC_TRACE_ALLOW_ENV_PROXY", raising=False)
+    monkeypatch.setenv("NODE_USE_ENV_PROXY", "1")
+    assert proxy_warnings() == []
+    monkeypatch.setenv("HTTPS_PROXY", "http://proxy.invalid:8080")
+    warnings = proxy_warnings()
+    assert len(warnings) == 1 and "VC_TRACE_ALLOW_ENV_PROXY" in warnings[0]

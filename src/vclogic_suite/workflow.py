@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -116,7 +117,26 @@ def invoke(ctx: Context, component: str, command: list[str], *, cwd: Path) -> in
     )
 
 
+def proxy_warnings() -> list[str]:
+    """The collector and mcporter ignore HTTP(S)_PROXY unless opted in; direct fetches then time out."""
+    if not any(
+        os.environ.get(name) for name in ("HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy")
+    ):
+        return []
+    return [
+        f"warning: a proxy is configured but {name}=1 is not set in .env; {effect}"
+        for name, effect in (
+            ("VC_TRACE_ALLOW_ENV_PROXY", "collector page fetches will bypass it and may time out"),
+            ("NODE_USE_ENV_PROXY", "Agent Reach/Exa search through mcporter may appear offline"),
+        )
+        if os.environ.get(name) != "1"
+    ]
+
+
 def run_stage(ctx: Context, args) -> int:
+    if args.command in ("collect", "process", "run"):
+        for warning in proxy_warnings():
+            print(warning, flush=True)
     slug = args.investor
     if slug is not None and not re.fullmatch(SLUG, slug):
         raise ValueError("Invalid investor slug; use the slug reported by collection")

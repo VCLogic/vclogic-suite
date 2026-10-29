@@ -18,3 +18,11 @@ Run `uv run vclogic doctor` and inspect the failing stage's log beneath the run 
 The existing fake provider is specific to Elizabeth/Thoras and its legacy contract. It cannot assess an arbitrary pitch, provide a free generic web rehearsal, or produce a decision for a Phase-1-only contract. See [the full workflow](full-pipeline.md) for supported opt-in research boundaries.
 
 The audit recorded three collector base-test failures in optional pyannote detection; these are not proof that the core reviewer path requires AV models. Avoid installing every optional extra to hide an unrelated failure.
+
+## Collector "Wizard stopped: timed out"
+
+On a host that reaches the internet only through `HTTP(S)_PROXY`, the collector fetches
+pages directly unless `.env` sets `VC_TRACE_ALLOW_ENV_PROXY=1`, and mcporter (Agent
+Reach/Exa) needs `NODE_USE_ENV_PROXY=1`. Set both in the suite root `.env` and rerun
+the same command; the wizard resumes from the step it reached. Research commands print
+a warning when a proxy is configured without these settings.
