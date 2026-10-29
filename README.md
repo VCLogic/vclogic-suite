@@ -1,8 +1,53 @@
-# VCLogic reviewer suite
+# VCLogic suite
 
-VCLogic studies an evidence-grounded approximation of an investor’s observable evaluative logic. Reconstructing investment rationales and predicting investment decisions are separate research tasks. This repository coordinates five existing components at exact Git revisions; their scientific logic stays in their own repositories.
+VCLogic studies an evidence-grounded approximation of an investor’s observable evaluative logic. Reconstructing investment rationales and predicting investment decisions are separate research tasks. This repository coordinates five existing components at exact Git revisions behind one CLI, `vclogic`; their scientific logic stays in their own repositories.
 
-Run the no-key software demonstration with Python **3.12.12**, **uv 0.9.17**, Git, and Node.js/npm installed:
+## Install everything
+
+Requires Python **3.12.12**, **uv 0.9.17**, Git, and Node.js/npm.
+
+```bash
+uv sync
+uv run vclogic init
+uv run vclogic doctor
+cp .env.example .env    # then fill in the credentials your providers need
+```
+
+What these do:
+
+- `uv sync` installs the suite CLI.
+- `vclogic init` fetches all five repositories at their pinned revisions into `.components/` and installs every component environment. That covers the collector, Investment Memory, onboarding, assessment and the web app, plus all research extras: embeddings, personalized assessment, collector browser/YouTube/Whisper/pyannote, PDF extraction, Chromium and the built web frontend. It shows step-based progress. Rerunning it is safe: matching checkouts and environments are reused, and clean checkouts move to new pins after a suite update. A checkout with local changes is never overwritten.
+- `init` ends with a JSON report. `"ready": true` with an empty `"missing_prerequisites"` means the host is complete. Otherwise the report names each missing tool and exits nonzero: ffmpeg, Node/npm, Codex or Claude Code, mcporter, or a Chromium that cannot launch. It never runs sudo or installs system software.
+- `vclogic doctor` checks without network access that every component is `pinned and clean`.
+- `.env` holds secrets only and is never committed. Non-secret settings live in `vclogic.toml`.
+
+`init` performs no inference. Model weights download the first time a model is used. Logging in to Codex or Claude Code, provider keys and gated Hugging Face model access remain your responsibility.
+
+### Other install options
+
+| Command | Installs | Use it for |
+|---|---|---|
+| `vclogic init` | Everything (same as `--profile all`) | The full research workflow; the default |
+| `vclogic init --profile web` | Onboarding, assessment and the web app, without the collector | Serving and assessing already prepared investors |
+| `vclogic init --profile core` | Onboarding and assessment environments only; no extras, no web, no collector | The no-key reviewer smoke test below; smallest download |
+| `--embeddings` | Adds embedding libraries to `core` or `web` | Building or querying semantic indexes without the full install |
+| `--offline` | Uses only local checkouts and cached packages | Repeating setup without network access |
+
+All profiles fetch all five repositories. `vclogic bootstrap --profile ...` is the older setup command. It installs a profile without the full-setup host checks.
+
+## Run a new investor
+
+Put secrets in `.env` and settings in `vclogic.toml`, then:
+
+```bash
+uv run vclogic run --name "Investor Name" --allow-paid   # collect (interactive) → memory → onboard → install
+uv run vclogic assess --investor investor-slug --pitch /abs/pitch.txt --company "Acme" --allow-paid
+uv run vclogic web --allow-paid                           # every installed investor in the UI
+```
+
+Only collection is interactive: the collector's guided wizard asks for identity and source review. Memory generation uses Codex or Claude Code, selected with `[memory] harness`. Rerunning `run` skips finished stages. Newly onboarded investors appear in a running web app without a restart. `assess` prints the investor's rationales and decision and saves them under `workspace/research/assessments/`. Set `allow_paid = true` in `vclogic.toml` to stop passing `--allow-paid`. Agents can use the `/vclogic` skill in `.agents/skills/vclogic/`. See [the full research workflow](docs/full-pipeline.md) for every step.
+
+## No-key reviewer demonstration
 
 ```bash
 uv sync
@@ -10,20 +55,21 @@ uv run vclogic init --profile core
 uv run vclogic test
 ```
 
-
 Alternatively, run the CPU-only container:
 
 ```bash
 docker compose up --build
 ```
 
-The container runs the demo with networking disabled after its build. A warm demo took approximately 30 seconds on the audited Linux host; initial source/dependency downloads take longer. Successful execution prints `Validation passed` and leaves separate rationale and In/Out artifacts with evidence links. See [Docker](docs/docker.md) for image size and limitations.
+The container holds only the `core` profile and runs the demo with networking disabled after its build. A warm demo took approximately 30 seconds on the audited Linux host; initial source/dependency downloads take longer. Successful execution prints `Validation passed` and leaves separate rationale and In/Out artifacts with evidence links. See [Docker](docs/docker.md) for image size and limitations.
 
-`uv sync` installs the suite CLI. `vclogic init` fetches all five repositories at their pinned revisions into `.components/`, verifying existing checkouts on repeat runs. Plain `init` installs the full research dependency set: embedding libraries, personalized assessment libraries, collector browser/YouTube/Whisper/pyannote support, PDF extraction, Chromium, and the web frontend. It shows step-based progress. Use `init --profile core` for only the CPU reviewer dependencies, or `init --profile web` for reviewer and web dependencies without the collector environment. All profiles fetch all five repositories. Full setup is substantially larger than the reviewer profile. Model weights are downloaded when their configured models are used; authentication and gated-model access remain operator prerequisites. Full setup reports missing system tools and exits nonzero if required tools or Chromium are unavailable. `vclogic test` only runs the no-key smoke workflow, component validators, and provenance checks. It never fetches repositories or installs dependencies; missing or stale setup produces an instruction to run `init`. It needs network access for setup, but no API keys, model weights or GPU. After setup, use `uv run vclogic test --offline`. Runtime and download size depend on caches and platform; no cold-start duration is promised.
+`vclogic test` only runs the no-key smoke workflow, component validators, and provenance checks. It never fetches repositories or installs dependencies; missing or stale setup produces an instruction to run `init`. Setup needs network access, but the test needs no API keys, model weights or GPU. After setup, use `uv run vclogic test --offline`. Runtime and download size depend on caches and platform; no cold-start duration is promised.
 
-The demo validates a frozen Elizabeth Yin memory with the real validator, recomputes wiki-only onboarding, and runs the existing scripted Elizabeth/Thoras assessment example **in a separate workspace against its original input snapshot**. The new onboarding bundle is valid but **not assessment-ready** because indexes are deliberately skipped. The assessment uses a fake provider and contract v1. These stages are not a continuous same-snapshot pipeline and do not reproduce a publication’s findings.
+The demo validates a frozen Elizabeth Yin memory with the real validator, recomputes wiki-only onboarding, and runs the existing scripted Elizabeth/Thoras assessment example **in a separate workspace against its original input snapshot**. Those frozen inputs come from the component commits recorded in `manifests/reviewer-artifacts.json` and are fetched into `.components/fixtures/`. The new onboarding bundle is valid but **not assessment-ready** because indexes are deliberately skipped. The assessment uses a fake provider and contract v1. These stages are not a continuous same-snapshot pipeline and do not reproduce a publication’s findings.
 
 Inspect `workspace/latest.json` for the latest run location. Each `workspace/runs/<id>/` contains `report.json`, a Markdown summary, provenance and stage logs. Verification checks recorded inputs and native artifacts; a successful smoke test establishes neither scientific accuracy nor human fidelity. Publication metric reproduction is unavailable until a coherent archive, human labels, analysis configuration and citation are supplied.
+
+## Components
 
 | Component | Responsibility |
 |---|---|
@@ -31,7 +77,7 @@ Inspect `workspace/latest.json` for the latest run location. Each `workspace/run
 | Investment Memory | Build cited memories; demo validates a frozen memory |
 | Investor Onboarding | Package, check and install memory bundles |
 | Agentic Assessment | Retrieval, rationale investigation, decision synthesis and rehearsal |
-| Web Application | UI consuming prepared assessment assets; optional |
+| Web Application | UI consuming prepared assessment assets |
 
 ```mermaid
 flowchart TD
@@ -43,30 +89,14 @@ flowchart TD
     A --> W[Web Application / Rehearsal]
 ```
 
-Source URLs, full commits and local aliases are in [the component manifest](manifests/components.lock.json). Downloaded checkouts live under `.components/`; generated data lives under `workspace/`. Four component locks are preserved; memory validation uses the locked onboarding environment.
+Source URLs, full commits and local aliases are in [the component manifest](manifests/components.lock.json). Downloaded checkouts live under `.components/`; generated data lives under `workspace/`. Component locks are used as published; memory runs inside the locked onboarding environment.
 
 ```bash
 uv run vclogic components             # inspect exact pins
-uv run vclogic init                   # fetch all five; install all environments
-uv run vclogic bootstrap --profile core
-uv run vclogic doctor
+uv run vclogic doctor                 # offline checkout status
 ```
 
-Global path options precede the subcommand, for example `uv run vclogic --workspace /tmp/reviewer-output demo`. Research commands have their own explicit workspace/config options. See [the reviewer guide](docs/reviewer-guide.md), [architecture](docs/architecture.md), [reproducibility](docs/reproducibility.md), [full research workflow](docs/full-pipeline.md), [Docker](docs/docker.md), and [troubleshooting](docs/troubleshooting.md).
-
-To build a new investor, put secrets in the root `.env` and settings in `vclogic.toml`, then:
-
-```bash
-uv run vclogic run --name "Investor Name" --allow-paid   # collect (interactive) → memory → onboard → install
-uv run vclogic assess --investor investor-slug --pitch /abs/pitch.txt --company "Acme" --allow-paid
-uv run vclogic web --allow-paid                           # every installed investor in the UI
-```
-
-Only collection is interactive: the collector's guided wizard asks for identity
-and source review. Memory generation uses Codex or Claude Code, selected with
-`[memory] harness`. Rerunning `run` skips finished stages. Agents can use the
-`/vclogic` skill in `.agents/skills/vclogic/`. See
-[the full research workflow](docs/full-pipeline.md) for every step.
+Global path options precede the subcommand, for example `uv run vclogic --workspace /tmp/reviewer-output demo`. See [the reviewer guide](docs/reviewer-guide.md), [architecture](docs/architecture.md), [reproducibility](docs/reproducibility.md), [full research workflow](docs/full-pipeline.md), [Docker](docs/docker.md), and [troubleshooting](docs/troubleshooting.md).
 
 The [Phase 1 audit](docs/component-audit.md) is a historical record, including known compatibility issues and component test failures; its statements that the suite was not yet implemented describe that audit date. See [NOTICE](NOTICE.md) for unresolved rights and attribution. No publication citation or project-wide license grant has been provided.
 
