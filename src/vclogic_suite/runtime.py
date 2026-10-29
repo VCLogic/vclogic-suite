@@ -7,7 +7,7 @@ import os
 import shutil
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from .components import Component, ensure_component, load_components, verify_component
@@ -113,6 +113,23 @@ def component_command(
     )
 
 
+def fixture_source(ctx: Context, section: dict, *, offline: bool):
+    """Frozen demo inputs live at their recorded commit; research code follows the main pins."""
+    component = ctx.components[section["component"]]
+    pinned = replace(
+        component,
+        commit=section["fixture_commit"],
+        directory=f"{component.directory}-{section['fixture_commit'][:12]}",
+    )
+    return ensure_component(pinned, ctx.components_dir / "fixtures", offline=offline)
+
+
+def fetch_fixtures(ctx: Context, *, offline: bool = False) -> None:
+    artifacts = json.loads((ctx.root / "manifests/reviewer-artifacts.json").read_text())
+    for section in ("memory", "assessment"):
+        fixture_source(ctx, artifacts[section], offline=offline)
+
+
 def environment_stamp(ctx: Context, name: str) -> dict:
     # Each lock's editable siblings are bound independently by Git SHA.
     return {
@@ -164,6 +181,7 @@ def bootstrap(
         raise ValueError("Install Node.js and npm for the web frontend, or use init --profile core")
     for name in progress(selected, "Verify repositories"):
         ensure_component(ctx.components[name], ctx.components_dir, offline=offline)
+    fetch_fixtures(ctx, offline=offline)
     for name in progress((name for name in selected if name != "memory"), "Install dependencies"):
         # Memory validator is installed by onboarding's existing uv lock.
         project = ctx.checkout(name)
@@ -300,13 +318,16 @@ def bootstrap(
             "ffmpeg": "Install ffmpeg with your operating system package manager.",
             "node": "Install a Node.js version supported by the web component.",
             "npm": "Install npm with Node.js.",
-            "codex": "Install and authenticate Codex CLI for memory generation.",
             "agent-reach": "Install Agent Reach for the collector's portfolio search route.",
             "mcporter": "Install and configure mcporter for Agent Reach's Exa backend.",
         }
         missing = {
             name: advice for name, advice in requirements.items() if shutil.which(name) is None
         }
+        if shutil.which("codex") is None and shutil.which("claude") is None:
+            missing["codex or claude"] = (
+                "Install and log in to Codex CLI or Claude Code for memory generation."
+            )
         if not browser_ok:
             missing["chromium"] = (
                 "Inspect workspace/setup-logs/browser-check.log; install missing browser system libraries, then rerun init."
@@ -316,6 +337,6 @@ def bootstrap(
             installed_extras=FULL_EXTRAS,
             missing_prerequisites=missing,
             ready=not missing,
-            authentication_and_models="Not verified: authenticate Codex and providers, accept gated model licenses; selected weights download on first use.",
+            authentication_and_models="Not verified: log in to Codex or Claude Code and providers, accept gated model licenses; selected weights download on first use.",
         )
     return result

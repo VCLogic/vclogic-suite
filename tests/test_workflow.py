@@ -87,7 +87,7 @@ def test_init_embeddings_is_explicit():
 
 def test_assess_can_use_managed_workspace():
     args = parser().parse_args(
-        ["assess", "--investor", "example", "--pitch", "pitch.txt", "--allow-paid"]
+        ["assess", "--investor", "example", "--pitch", "pitch.txt", "--company", "Acme"]
     )
     assert args.research_workspace is None
     assert args.config is None
@@ -180,6 +180,7 @@ def test_bootstrap_upgrades_cached_environments_with_embedding_extras(tmp_path, 
     for name in ("assessment", "onboarding"):
         write_json(ctx.checkout(name) / ".venv/vclogic-suite-environment.json", stamp)
     monkeypatch.setattr(runtime, "ensure_component", lambda *a, **kw: None)
+    monkeypatch.setattr(runtime, "fetch_fixtures", lambda *a, **kw: None)
     monkeypatch.setattr(runtime, "environment_stamp", lambda *a: stamp)
     monkeypatch.setattr(runtime.shutil, "which", lambda name: name)
     commands = []
@@ -205,3 +206,97 @@ def test_full_profile_extras_cover_components():
     assert {"embeddings", "personalized"} <= set(FULL_EXTRAS["assessment"])
     assert FULL_EXTRAS["onboarding"] == ["embeddings"]
     assert FULL_EXTRAS["web"] == ["embeddings"]
+
+
+def test_collect_runs_guided_wizard_into_suite_traces(tmp_path, monkeypatch):
+    from vclogic_suite import workflow
+
+    calls = []
+    monkeypatch.setattr(
+        workflow, "invoke", lambda ctx, c, command, *, cwd: calls.append(command) or 0
+    )
+    ctx = Context(tmp_path, tmp_path / "components", tmp_path / "workspace")
+    assert workflow.run_stage(ctx, parser().parse_args(["collect", "--name", "Jane Roe"])) == 0
+    traces = str(ctx.workspace / "research/traces")
+    assert calls == [["vc-trace-collector", "wizard", "--output-dir", traces, "--name", "Jane Roe"]]
+    with pytest.raises(ValueError, match="--name"):
+        workflow.run_stage(ctx, parser().parse_args(["collect"]))
+
+
+def test_memory_harness_and_paid_permission_come_from_settings(tmp_path, monkeypatch):
+    from vclogic_suite import workflow
+
+    (tmp_path / "vclogic.toml").write_text(
+        'allow_paid = true\n[memory]\nharness = "claude"\nargs = ["--workers", "2"]\n'
+    )
+    monkeypatch.setattr(workflow.shutil, "which", lambda name: name if name == "claude" else None)
+    calls = []
+    monkeypatch.setattr(
+        workflow, "invoke", lambda ctx, c, command, *, cwd: calls.append(command) or 0
+    )
+    ctx = Context(tmp_path, tmp_path / "components", tmp_path / "workspace")
+    assert workflow.run_stage(ctx, parser().parse_args(["memory", "--investor", "jane-roe"])) == 0
+    build = calls[1]
+    assert build[1] == "full-build"
+    assert build[-4:] == ["--harness", "claude", "--workers", "2"]
+    calls.clear()
+    args = parser().parse_args(["memory", "--investor", "other", "--", "--harness", "codex"])
+    workflow.run_stage(ctx, args)
+    assert build[-4:] != calls[1][-4:] and calls[1].count("--harness") == 1
+
+
+def test_settings_reject_non_list_args(tmp_path):
+    from vclogic_suite.workflow import settings
+
+    (tmp_path / "vclogic.toml").write_text('[onboard]\nargs = "--from-pitch-show"\n')
+    with pytest.raises(ValueError, match="list of strings"):
+        settings(tmp_path)
+
+
+def test_run_chains_stages_and_skips_finished_ones(tmp_path, monkeypatch):
+    import json
+
+    from vclogic_suite import workflow
+
+    ctx = Context(tmp_path, tmp_path / "components", tmp_path / "workspace")
+    traces = ctx.workspace / "research/traces"
+    seen = []
+
+    def invoke(ctx_, component, command, *, cwd):
+        seen.append(command[1])
+        if command[1] == "wizard":  # Collector creates the workspace, possibly with firm suffix.
+            (traces / "jane-roe-acme").mkdir(parents=True)
+            (traces / "jane-roe-acme/guided_state.json").write_text(
+                json.dumps({"completed": ["identity", "finish"]})
+            )
+        return 0
+
+    monkeypatch.setattr(workflow, "invoke", invoke)
+    monkeypatch.setattr(workflow.shutil, "which", lambda name: name)
+    monkeypatch.setattr(
+        workflow, "component_command", lambda *a, **kw: '{"valid":true,"ready_for_assessment":true}'
+    )
+    args = parser().parse_args(["run", "--name", "Jane Roe", "--allow-paid"])
+    assert workflow.run_stage(ctx, args) == 0
+    assert seen == ["wizard", "verify", "full-build", "check", "prepare", "install"]
+    # Second run: collection finished, memory exists, investor installed -> nothing regenerated.
+    (ctx.workspace / "research/wiki/jane-roe-acme").mkdir(parents=True)
+    installed = ctx.workspace / "research/pipeline/inputs/investors"
+    installed.mkdir(parents=True)
+    (installed / "jane-roe-acme.toml").write_text("")
+    seen.clear()
+    args = parser().parse_args(["run", "--investor", "jane-roe-acme", "--allow-paid"])
+    assert workflow.run_stage(ctx, args) == 0
+    assert seen == ["check"]
+
+
+def test_run_stops_when_collection_unfinished(tmp_path, monkeypatch, capsys):
+    from vclogic_suite import workflow
+
+    monkeypatch.setattr(workflow, "invoke", lambda *a, **kw: 0)
+    ctx = Context(tmp_path, tmp_path / "components", tmp_path / "workspace")
+    args = parser().parse_args(["run", "--name", "Jane Roe", "--allow-paid"])
+    assert workflow.run_stage(ctx, args) == 1
+    assert "--investor jane-roe" in capsys.readouterr().out
+    with pytest.raises(ValueError, match="allow-paid"):
+        workflow.run_stage(ctx, parser().parse_args(["run", "--name", "Jane Roe"]))

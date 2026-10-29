@@ -7,6 +7,7 @@ import os
 import re
 import subprocess
 import tomllib
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .files import safe_path
@@ -33,11 +34,19 @@ def check_credentials(config: dict) -> None:
 
 
 def launch(ctx: Context, args) -> int:
-    if not args.allow_paid:
+    from .workflow import allow_paid, settings
+
+    if not allow_paid(ctx, args):
         raise ValueError(
-            "Live research operations require --allow-paid; default demo requires no key"
+            "Live research operations require --allow-paid (or allow_paid = true in vclogic.toml)"
         )
     workspace = (args.research_workspace or ctx.workspace / "research/pipeline").resolve()
+    if args.config is None and args.command == "web" and not args.investor:
+        # Any installed rehearsal config starts the app; the UI then lists every installed investor.
+        installed = sorted(workspace.glob("configs/investors/*/rehearsal.toml"))
+        if not installed:
+            raise ValueError("No installed investor; run uv run vclogic run --name NAME first")
+        args.config = installed[0].relative_to(workspace)
     if args.config is None:
         if not args.investor or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", args.investor):
             raise ValueError(
@@ -77,6 +86,7 @@ def launch(ctx: Context, args) -> int:
         static = project / "web/frontend/dist"
         if not (static / "index.html").is_file():
             raise ValueError("Web frontend missing; run bootstrap --profile web")
+        port = args.port or settings(ctx.root).get("web", {}).get("port", 8000)
         command = [
             "vc-clone-web",
             "--pipeline-workspace",
@@ -86,9 +96,13 @@ def launch(ctx: Context, args) -> int:
             "--static-root",
             str(static),
             "--port",
-            str(args.port),
+            str(port),
         ]
+        for flag, folder in (("--investor-bundles", "bundles"), ("--investment-memory", "wiki")):
+            if (ctx.workspace / "research" / folder).is_dir():
+                command += [flag, str(ctx.workspace / "research" / folder)]
     else:
+        session = f"{args.investor}-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
         command = [
             "vc-clone-rehearsal",
             "start",
@@ -98,6 +112,8 @@ def launch(ctx: Context, args) -> int:
             args.investor,
             "--pitch",
             str(args.pitch.resolve()),
+            "--session",
+            session,
             "--build-canonical-baseline",
         ]
         for company in args.company:
@@ -106,8 +122,34 @@ def launch(ctx: Context, args) -> int:
         "Live operation enabled. Configured generation may incur cost; local models must be prepared.",
         flush=True,
     )
-    return subprocess.call(
+    code = subprocess.call(
         ["uv", "run", "--offline", "--no-sync", "--project", str(project), *command],
         cwd=workspace,
         env=execution_environment(no_keys=False),
     )
+    if code or args.command == "web":
+        return code
+    # Read back the frozen Phase 1/Phase 2 assessment; this makes no model calls.
+    output = ctx.workspace / "research/assessments" / args.investor
+    output.mkdir(parents=True, exist_ok=True)
+    for kind, suffix in (("json", "json"), ("markdown", "md")):
+        text = component_command(
+            ctx,
+            "assessment",
+            [
+                "vc-clone-rehearsal",
+                "assessment",
+                "--config",
+                relative,
+                "--session",
+                session,
+                "--format",
+                kind,
+            ],
+            cwd=workspace,
+            no_keys=False,
+        )
+        (output / f"{session}.{suffix}").write_text(text)
+    print(text, flush=True)
+    print(f"Assessment saved: {output / session}.json and .md (session {session})", flush=True)
+    return 0

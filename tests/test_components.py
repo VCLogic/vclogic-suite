@@ -77,3 +77,21 @@ def test_fetch_rejects_symlink_destination(repository, tmp_path):
     (root / "example").symlink_to(remote, target_is_directory=True)
     with pytest.raises(ValueError, match="symlink"):
         ensure_component(component, root)
+
+
+def test_clean_checkout_moves_to_new_pin(repository, tmp_path):
+    from vclogic_suite.components import Component, ensure_component
+
+    remote, sha = repository
+    component = Component("example", str(remote), sha, "example", "example", "1", "fixture")
+    destination = ensure_component(component, tmp_path / "components")
+    (remote / "data.txt").write_text("updated\n")
+    git(remote, "commit", "-qam", "update")
+    newer = git(remote, "rev-parse", "HEAD")
+    git(remote, "config", "uploadpack.allowReachableSHA1InWant", "true")
+    moved = Component("example", str(remote), newer, "example", "example", "1", "fixture")
+    assert ensure_component(moved, tmp_path / "components") == destination
+    assert (destination / "data.txt").read_text() == "updated\n"
+    with pytest.raises(ValueError, match="Wrong revision"):
+        # Offline never fetches; a stale pin is reported, not silently used.
+        ensure_component(component, tmp_path / "components", offline=True)

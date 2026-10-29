@@ -26,3 +26,16 @@ def test_fake_research_provider_rejected():
 
     with pytest.raises(ValueError, match="fixture"):
         check_credentials({"provider": {"kind": "fake"}})
+
+
+def test_web_without_installed_investor_is_actionable(tmp_path):
+    from vclogic_suite.research import launch
+    from vclogic_suite.runtime import Context
+
+    ctx = Context(tmp_path, tmp_path / "components", tmp_path / "outputs")
+    (ctx.workspace / "research/pipeline").mkdir(parents=True)
+    args = argparse.Namespace(
+        command="web", allow_paid=True, research_workspace=None, config=None, investor=None
+    )
+    with pytest.raises(ValueError, match="vclogic run"):
+        launch(ctx, args)

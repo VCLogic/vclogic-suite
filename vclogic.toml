@@ -1,0 +1,24 @@
+# Suite settings inherited by every research command. Secrets belong in .env, never here.
+# Command-line flags take precedence. Component-native configs still own models and methods.
+
+# Permit stages that can call paid models: memory generation, Pitch Show extraction,
+# assessment and web research actions. Equivalent to passing --allow-paid every time.
+allow_paid = false
+
+[process]
+# Extra native options for `vclogic process`, e.g. ["--transcription-model", "small"].
+args = []
+
+[memory]
+# Local generation harness for investor-memory full-build: "auto", "codex" or "claude".
+# "auto" asks in a terminal when both are installed.
+harness = "auto"
+# Extra native options, e.g. ["--model", "sonnet", "--workers", "3"].
+args = []
+
+[onboard]
+# Extra native options, e.g. ["--from-pitch-show", "--max-episodes", "5"].
+args = []
+
+[web]
+port = 8000

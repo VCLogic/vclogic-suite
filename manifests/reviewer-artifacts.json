@@ -32,7 +32,8 @@
       "wiki/elizabeth-yin-hustle-fund/sources.md": "559baabef9e1279d65877cb941ddb58869337223f5f37da962bc9a764bd6344e",
       "wiki/elizabeth-yin-hustle-fund/theses.md": "c0583bd0f64cea0a32a3d384b90a5ecf17316d4cfe5afc7d16673d47c8886dfd",
       "wiki/elizabeth-yin-hustle-fund/validation.json": "655823ac7f996b259837b1279f4757264aac1ab82808d9b562c06a9f640f36af"
-    }
+    },
+    "fixture_commit": "050c2470fc49c2aff6961f8562fa224e8467c7cd"
   },
   "assessment": {
     "component": "assessment",
@@ -188,7 +189,8 @@
       "inputs/wiki/elizabeth-yin-hustle-fund/persona.md": "1c69ce84f32bf20749f7a0de1eeaecec2a62c149624aa184b638cebb272eba34",
       "inputs/wiki/elizabeth-yin-hustle-fund/portfolio_and_constraints.md": "902ce2bb44046176d246203520b46e05ed440599ec39ec2cebbf78e860c77964",
       "inputs/wiki/elizabeth-yin-hustle-fund/theses.md": "cd8cbadf54f8df6819c77ffb908b4f45ff98468992fcd6f35d1bcf1c9822acfb"
-    }
+    },
+    "fixture_commit": "296dc55768ea60ce3da464ae6bfd1940bbfef5c9"
   },
   "publication": {
     "status": "unavailable",

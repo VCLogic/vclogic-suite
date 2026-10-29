@@ -2,36 +2,108 @@
 
 This is an opt-in research workflow requiring reviewed evidence, coherent native configurations and prepared assets. The default demo covers only the staged software demonstration described in [the reviewer guide](reviewer-guide.md). No live inference or public collection was executed to validate this guide; command contracts were inspected at the pinned revisions in [the audit](component-audit.md).
 
-## Suite commands and shared credentials
+## A new investor, step by step
 
-Run everything from the suite root. Copy `.env.example` to `.env` and fill only
-credentials required by your chosen providers. All research commands below,
-including `assess` and `web`, load this one file and pass settings to native
-processes. Shell-exported variables take precedence. Values are literal; there
-is no shell execution or `${...}` interpolation. Component-local dotenv loading
-is disabled for these subprocesses. No credentials are copied into checkouts or
-run reports. No-key `test`, `demo`, and `verify` do not load `.env`.
+All commands run from the suite root.
+
+### 0. Set up once
 
 ```bash
-uv run vclogic init
-uv run vclogic discover --name "Investor Name"
-# Use the actual slug printed by discovery in the commands below:
-uv run vclogic collect --investor investor-slug
-uv run vclogic process --investor investor-slug
-uv run vclogic memory --investor investor-slug --allow-paid
-uv run vclogic onboard --investor investor-slug
-uv run vclogic assess --investor investor-slug --pitch /absolute/path/pitch.txt --allow-paid
-uv run vclogic web --investor investor-slug --allow-paid
+uv sync
+uv run vclogic init          # fetch the five pinned repositories, install everything
+uv run vclogic doctor        # every component must say "pinned and clean"
+cp .env.example .env         # then fill only the credentials your providers need
 ```
 
-`discover` and `collect` use the collector's interactive wizard, preserving its
-identity, source, and budget review. `collect` downloads selected sources;
-`process` processes downloaded sources, then exports and verifies the corpus.
-`memory` first verifies the collector export, invokes native `full-build`, then
-checks the memory. This is the full-export review method described below, not
-the legacy curated-source importer. `onboard` prepares, checks and installs the
-native bundle. `assess` starts native rehearsal for a new pitch using the
-installed investor configurations; `web` uses the same workspace.
+`init` also moves clean component checkouts to new pins after a suite update.
+It refuses to touch a checkout with local changes.
+
+Log in to at least one memory-generation harness: [Codex CLI](https://developers.openai.com/codex/cli/)
+or [Claude Code](https://code.claude.com/docs/en/setup). `init` reports it as a
+missing prerequisite when neither is on `PATH`. For audio and video sources, set
+`HF_TOKEN` in `.env` and accept the gated pyannote models on Hugging Face.
+
+### 1. Two configuration files
+
+| File | Holds | Committed |
+|---|---|---|
+| `.env` | Secrets: `OPENROUTER_API_KEY`, `HF_TOKEN`, collector endpoints | Never |
+| `vclogic.toml` | Settings: `allow_paid`, memory `harness`, extra native options per stage, web port | Yes |
+
+Every research command loads both. Shell-exported variables win over `.env`, and
+command-line flags win over `vclogic.toml`. `.env` values are literal (no `${...}`
+expansion), and component-local `.env` files are ignored. No-key `test`, `demo`
+and `verify` load neither file.
+
+Set `allow_paid = true` in `vclogic.toml` once you accept that memory generation,
+Pitch Show extraction and assessments spend money. Otherwise, pass `--allow-paid`
+to those commands. To choose the memory harness without being asked, set
+`harness = "codex"` or `harness = "claude"`.
+
+### 2. Run the whole investor pipeline
+
+```bash
+uv run vclogic run --name "Jane Roe" --allow-paid
+```
+
+1. **Collect (interactive).** The collector's guided wizard confirms the identity,
+   lets you skip platforms, triage sources, download them, pick voice references,
+   then process, export and verify the corpus. This is the only step that needs you.
+   Quitting saves progress.
+2. **Memory.** The suite verifies the export, then runs `investor-memory full-build`
+   with the harness from `vclogic.toml`, then validates the memory.
+3. **Onboard.** The suite prepares the bundle with semantic indexes, checks that it
+   is valid and `ready_for_assessment`, then installs it into the pipeline workspace.
+4. The suite prints the commands for assessment and the web app.
+
+`run` resumes. Rerun it with the slug it printed:
+
+```bash
+uv run vclogic run --investor jane-roe --allow-paid
+```
+
+A finished collection is not repeated, and an existing memory is revalidated rather
+than regenerated. An investor that is already installed is not reinstalled.
+
+The same stages run one at a time:
+
+```bash
+uv run vclogic collect --name "Jane Roe"          # or --investor jane-roe to resume
+uv run vclogic process --investor jane-roe        # only to re-process/export/verify
+uv run vclogic memory  --investor jane-roe --allow-paid
+uv run vclogic onboard --investor jane-roe
+```
+
+### 3. Assess a pitch
+
+```bash
+uv run vclogic assess --investor jane-roe --pitch /abs/path/pitch.txt --company "Acme" --allow-paid
+```
+
+The engine builds the investor's assessment: Phase 1 investigates the investor's
+rationales, and Phase 2 synthesizes the investment decision. The suite then prints
+the assessment and saves it as `workspace/research/assessments/jane-roe/<session>.md`
+and `.json`. `--company` is required and repeatable, because the engine excludes
+that company's material from retrieval to prevent leakage. The same session can
+continue as a rehearsal in the web app.
+
+### 4. Web interface
+
+```bash
+uv run vclogic web --allow-paid
+```
+
+The command serves every installed investor at `http://localhost:8000` (or the
+port set by `[web] port` in `vclogic.toml`). Assessments and rehearsals can also
+be started there. Restart the server after onboarding another investor.
+
+### 5. Agent skill
+
+Claude Code (`/vclogic`) and Codex (`$vclogic`) have a suite skill under
+`.agents/skills/vclogic/`. It runs the unattended stages and assessments, and it
+asks you to run the interactive collection wizard yourself with `! uv run vclogic collect ...`.
+
+### Paths
 
 Paths are resolved automatically under `workspace/research/`:
 
@@ -42,61 +114,34 @@ Paths are resolved automatically under `workspace/research/`:
 | Memory generation cache | `memory-cache/<investor-slug>/` |
 | Onboarding bundle | `bundles/<investor-slug>/` |
 | Installed assessment/web workspace | `pipeline/` |
+| Pitch assessments | `assessments/<investor-slug>/` |
 
-Global `--workspace /absolute/path` before the command relocates this tree.
-Existing `assess --workspace ... --config ...` and `web --workspace ... --config ...`
-overrides remain available. Existing memories and bundles are not overwritten;
-use a new workspace for another version. Native caches and collector state can
-be reused when retrying interrupted work. Stage execution stops on the first
-nonzero native exit status. Inspect native warnings and human review outcomes,
-not merely the final command exit status.
+Global `--workspace /absolute/path` before the command relocates this tree. Existing
+memories and bundles are never overwritten; use a new workspace for another version.
+Stages stop at the first nonzero native exit. Inspect native warnings and human
+review outcomes, not only the final exit status.
 
-For an already prepared historical pitch package, run native graph stages:
-
-```bash
-uv run vclogic pipeline --investor investor-slug --config configs/investors/investor-slug/canonical.toml --allow-paid
-```
-
-This delegates to `vc-clone-graph preflight`, `run`, and `verify`. Config paths
-resolve inside `workspace/research/pipeline/`. A newly onboarded wiki alone does
-not supply a historical pitch package: use `assess --pitch` for a new pitch.
-Review the native provider/model/contract configuration before generation;
-`.env` supplies credentials, not a new research methodology.
-
-Selected native options can follow `--`; paths in those options should be absolute:
+Native options can be set per stage in `vclogic.toml` (`[memory] args = [...]`), or
+after `--` for a single run. Suite-managed paths cannot be overridden:
 
 ```bash
-uv run vclogic process --investor investor-slug -- --transcription-model MODEL
-uv run vclogic memory --investor investor-slug --allow-paid -- --model MODEL --workers 3
-uv run vclogic onboard --investor investor-slug --allow-paid -- --from-pitch-show --max-episodes 5
+uv run vclogic memory --investor jane-roe --allow-paid -- --harness claude --model sonnet
+uv run vclogic onboard --investor jane-roe --allow-paid -- --from-pitch-show --max-episodes 5
 ```
 
-Suite-managed paths and stage selection cannot be overridden by forwarded flags.
-`onboard --skip-indexes` is available for an explicitly partial bundle and reports
-`ready_for_assessment=false`; it cannot support live assessment. Treat this as a
-terminal partial artifact for that workspace: the native installer never overwrites
-an installed bundle, so this command is not an in-place upgrade route. For live
-research, install embedding dependencies first and omit `--skip-indexes`. Wiki-only indexing
-can download the pinned embedding model. Pitch Show extraction can use paid
-inference and requires `--allow-paid`; `--collect-only` avoids extraction but can
-still access public websites.
+`onboard --skip-indexes` produces an explicitly partial bundle
+(`ready_for_assessment=false`) that cannot support assessment. The native installer
+never overwrites an installed bundle.
 
-Plain `init` installs all locked component extras needed for the research workflow:
-embeddings, personalized assessment, collector browser/YouTube/AV/Whisper/pyannote,
-plus PDF extraction from `configs/memory-pdf.lock`. It downloads Chromium and
-builds the web frontend. `init --embeddings` remains accepted and is equivalent
-with the default all profile. `init --profile core` is the smaller no-model reviewer
-installation; add `--embeddings` to core or web when semantic indexing is needed.
+For an already prepared historical pitch package, `uv run vclogic pipeline --investor
+<slug> --config configs/investors/<slug>/canonical.toml --allow-paid` runs native
+`vc-clone-graph preflight`, `run` and `verify`.
 
-Model weights load later according to the selected models. Full initialization
-checks ffmpeg, Node/npm, Codex, Agent Reach and mcporter and verifies Chromium can
-launch. Missing prerequisites are reported with a nonzero exit, after retaining
-successful setup work. It does not run sudo or silently install global system
-software. Authenticate Codex/provider services, accept gated model licenses, and
-configure external Agent Reach backends before their first use. CUDA drivers and
-local provider services remain host-specific. No setup command performs inference.
-The commands were validated with mocks and a real frozen-memory partial onboarding
-run; no live public-data collection or paid generation was executed as a test.
+`init` installs every locked extra: embeddings, personalized assessment, collector
+browser/YouTube/AV/Whisper/pyannote, and PDF extraction from `configs/memory-pdf.lock`.
+It also installs Chromium and builds the web frontend. `init --profile core` is the
+small no-model reviewer install. No setup command performs inference. Model weights
+download on first use.
 
 The sections below document native interfaces and remaining research requirements.
 
@@ -106,14 +151,13 @@ In `.components/vclogic-vc-trace-collector`, inspect the actual interfaces befor
 
 ```bash
 uv run --locked vc-trace-collector --help
-uv run --locked vc-trace-collector discover --help
 uv run --locked vc-trace-collector review --help
 uv run --locked vc-trace-collector collect --help
 uv run --locked vc-trace-collector export --help
 uv run --locked vc-trace-collector verify --help
 ```
 
-The staged route is discover → human identity/source review → fetch/collect → process → export → verify. Do not auto-confirm those review decisions. Export the entire `outputs/<slug>/` tree, including identity, canonical corpus, processed/raw snapshots and provenance. Portfolio source pages are evidence, not verified holdings.
+The collector `wizard` is one guided route: identity → platforms → triage → fetch → voice reference → process → export/verify. Do not auto-confirm its review decisions. Export the entire `outputs/<slug>/` tree, including identity, canonical corpus, processed/raw snapshots and provenance. Portfolio source pages are evidence, not verified holdings.
 
 Public discovery/fetching needs network access. AV can require yt-dlp, ffmpeg, Whisper, gated pyannote access and model weights; these are absent from core. The audit found legacy `full_text`/`text` and `verified_human` admission mismatches at the collector/memory boundary. Choose and document the supported input route without silently rewriting source policy.
 
@@ -127,7 +171,7 @@ uv run --locked investor-memory full-build /absolute/export/<slug> --output /abs
 uv run --locked investor-memory check /absolute/research/wiki/<slug>
 ```
 
-`full-build` invokes authenticated Codex CLI and may consume paid inference. It is not run by suite setup/demo. Output must be new and disjoint from input; keep cache separate. PDF extraction requires the memory `full` extra, whose independent environment is not currently upstream-locked. Resolve that environment explicitly if the evidence requires it.
+`full-build` invokes the selected authenticated harness (`--harness codex` or `--harness claude`) and may consume paid inference. It is not run by suite setup/demo. Output must be new and disjoint from input; keep cache separate. PDF extraction requires the memory `full` extra, whose independent environment is not currently upstream-locked. Resolve that environment explicitly if the evidence requires it.
 
 Retain coverage warnings, input inventory, source reviews, identity resolutions, evidence offsets/citations and generation configuration. Full-build does not enforce a research time cutoff. Establish temporal admissibility and leakage exclusions, and perform semantic review independently of structural validation.
 
@@ -159,7 +203,7 @@ For a new pitch, the suite adapter delegates to existing rehearsal start and req
 uv run vclogic assess --workspace /absolute/research/workspace --config /absolute/research/workspace/configs/rehearsal.toml --investor <slug> --pitch /absolute/research/pitch.txt --allow-paid
 ```
 
-Configure generation and embedding providers separately if required, set their selected credential names in the suite root `.env`, and prepare models/indexes first. `--allow-paid` authorizes the adapter's live path; it does not promise a budget or free local execution. Memory generation uses Codex authentication; OpenRouter/OpenAI assessment uses configured API-key names; local Ollama requires its own running service and weights. `.env.example` contains placeholders only.
+Configure generation and embedding providers separately if required, set their selected credential names in the suite root `.env`, and prepare models/indexes first. `--allow-paid` authorizes the adapter's live path; it does not promise a budget or free local execution. Memory generation uses the Codex or Claude Code login; OpenRouter/OpenAI assessment uses configured API-key names; local Ollama requires its own running service and weights. `.env.example` contains placeholders only.
 
 Preserve investigation and decision JSON separately, their hash binding, retrieval reads, source quotations, native configuration, model identity and usage/provenance receipts. Evaluate rationales against independently reviewed rationales and investment decisions against independent outcomes, retaining abstentions, failures and coverage. A publication archive and exact evaluation specification have not yet been supplied, so no generic evaluation command is claimed to reproduce the paper.
 

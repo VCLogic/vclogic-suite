@@ -85,12 +85,17 @@ def parser() -> argparse.ArgumentParser:
         if name == "assess":
             command.add_argument("--investor", required=True)
             command.add_argument("--pitch", type=Path, required=True)
-            command.add_argument("--company", action="append", default=[])
+            command.add_argument(
+                "--company",
+                action="append",
+                required=True,
+                help="Company name/alias excluded from retrieval to prevent leakage; repeatable",
+            )
         else:
             command.add_argument(
-                "--investor", help="Investor slug for the installed rehearsal config"
+                "--investor", help="Installed investor whose rehearsal config starts the app"
             )
-            command.add_argument("--port", type=int, default=8000)
+            command.add_argument("--port", type=int, help="Default: [web] port in vclogic.toml")
     return root
 
 

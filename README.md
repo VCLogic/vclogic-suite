@@ -54,10 +54,19 @@ uv run vclogic doctor
 
 Global path options precede the subcommand, for example `uv run vclogic --workspace /tmp/reviewer-output demo`. Research commands have their own explicit workspace/config options. See [the reviewer guide](docs/reviewer-guide.md), [architecture](docs/architecture.md), [reproducibility](docs/reproducibility.md), [full research workflow](docs/full-pipeline.md), [Docker](docs/docker.md), and [troubleshooting](docs/troubleshooting.md).
 
-To build a new investor, configure the root `.env` once and use the staged research
-commands: `discover` → `collect` → `process` → `memory` → `onboard` → `assess` / `web`.
-The suite resolves the handoff paths. See [the full research workflow](docs/full-pipeline.md)
-for commands, embedding setup, human review and provider requirements.
+To build a new investor, put secrets in the root `.env` and settings in `vclogic.toml`, then:
+
+```bash
+uv run vclogic run --name "Investor Name" --allow-paid   # collect (interactive) → memory → onboard → install
+uv run vclogic assess --investor investor-slug --pitch /abs/pitch.txt --company "Acme" --allow-paid
+uv run vclogic web --allow-paid                           # every installed investor in the UI
+```
+
+Only collection is interactive: the collector's guided wizard asks for identity
+and source review. Memory generation uses Codex or Claude Code, selected with
+`[memory] harness`. Rerunning `run` skips finished stages. Agents can use the
+`/vclogic` skill in `.agents/skills/vclogic/`. See
+[the full research workflow](docs/full-pipeline.md) for every step.
 
 The [Phase 1 audit](docs/component-audit.md) is a historical record, including known compatibility issues and component test failures; its statements that the suite was not yet implemented describe that audit date. See [NOTICE](NOTICE.md) for unresolved rights and attribution. No publication citation or project-wide license grant has been provided.
 

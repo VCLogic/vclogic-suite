@@ -6,7 +6,7 @@
     {
       "id": "collector",
       "repository": "https://github.com/VCLogic/vclogic-vc-trace-collector.git",
-      "commit": "71f5284882ca33d07e5f6874124beb1950d0f14c",
+      "commit": "bf42df38b3d30c176184d64ee57396398a641794",
       "directory": "vclogic-vc-trace-collector",
       "package": "vc-trace-collector",
       "version": "0.1.0",
@@ -15,7 +15,7 @@
     {
       "id": "memory",
       "repository": "https://github.com/VCLogic/vclogic-vc-investment-memory.git",
-      "commit": "050c2470fc49c2aff6961f8562fa224e8467c7cd",
+      "commit": "cec24e4afd8ff187b7ec303ebf2ad277020e36fe",
       "directory": "vclogic-vc-investment-memory",
       "package": "vc-investment-memory",
       "version": "0.2.0",
@@ -23,8 +23,8 @@
     },
     {
       "id": "onboarding",
-      "repository": "https://github.com/VCLogic/vclogic-vc-inverstor-onboarding.git",
-      "commit": "ca5019881d0eb807effc108f575e76c0a033e35f",
+      "repository": "https://github.com/VCLogic/vclogic-vc-investor-onboarding.git",
+      "commit": "87233506957cabbc1ee2fb04d934857d3b975098",
       "directory": "vclogic-vc-investor-onboarding",
       "package": "vclogic-vc-investor-onboarding",
       "version": "0.1.0",
@@ -33,7 +33,7 @@
     {
       "id": "assessment",
       "repository": "https://github.com/VCLogic/vclogic-vc-agentic-assessment.git",
-      "commit": "296dc55768ea60ce3da464ae6bfd1940bbfef5c9",
+      "commit": "3a7ba5fe760f9a75b93e95ade2f4ec1a7955b0fd",
       "directory": "vclogic-vc-agentic-assessment",
       "package": "vclogic-vc-agentic-assessment",
       "version": "0.1.0",
@@ -42,7 +42,7 @@
     {
       "id": "web",
       "repository": "https://github.com/VCLogic/vclogic-web-application.git",
-      "commit": "013d862e0e595ea3414022731a5eb40b598e2e80",
+      "commit": "864d18eade85a6bcb4e02631db7a95d70c33aded",
       "directory": "vclogic-web-application",
       "package": "vclogic-web-application",
       "version": "0.1.0",

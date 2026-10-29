@@ -27,6 +27,7 @@ def test_full_setup_upgrades_caches_and_reports_missing_host_tools(tmp_path, mon
     for name in runtime.PROFILES["all"]:
         write_json(ctx.checkout(name) / ".venv/vclogic-suite-environment.json", stamp)
     monkeypatch.setattr(runtime, "ensure_component", lambda *a, **kw: None)
+    monkeypatch.setattr(runtime, "fetch_fixtures", lambda *a, **kw: None)
     monkeypatch.setattr(runtime, "environment_stamp", lambda *a: stamp)
     monkeypatch.setattr(
         runtime.shutil, "which", lambda name: None if name == "agent-reach" else name

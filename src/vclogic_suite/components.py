@@ -73,6 +73,19 @@ def verify_component(component: Component, root: Path) -> Path:
 
 def ensure_component(component: Component, root: Path, *, offline: bool = False) -> Path:
     target = root / component.directory
+    if target.exists() and not target.is_symlink() and not offline:
+        try:
+            return verify_component(component, root)
+        except ValueError as error:
+            if "Wrong revision" not in str(error):
+                raise
+        # Re-pin only a clean checkout of the same origin; local edits are never discarded.
+        if _git(target, "status", "--porcelain", "--untracked-files=normal"):
+            raise ValueError(
+                f"Component {component.id} is modified; refusing to overwrite or run it"
+            )
+        _git(target, "fetch", "--quiet", "--depth", "1", "origin", component.commit)
+        _git(target, "checkout", "--quiet", "--detach", component.commit)
     if target.exists() or target.is_symlink():
         return verify_component(component, root)
     if offline:

@@ -8,7 +8,7 @@ from time import monotonic
 from uuid import uuid4
 
 from .files import copy_verified, digest, inventory, write_json
-from .runtime import Context, bootstrap, component_command, require_core
+from .runtime import Context, bootstrap, component_command, fixture_source, require_core
 
 
 def demo(ctx: Context, *, offline: bool = False, setup: bool = True) -> dict:
@@ -16,6 +16,7 @@ def demo(ctx: Context, *, offline: bool = False, setup: bool = True) -> dict:
         bootstrap(ctx, offline=offline)
     else:
         require_core(ctx)
+        offline = True  # test never fetches; init already retrieved the fixtures.
     artifacts = json.loads((ctx.root / "manifests/reviewer-artifacts.json").read_text())
     expectations_path = ctx.root / "expected_outputs/reviewer-demo/contract.json"
     expectations = json.loads(expectations_path.read_text())
@@ -43,7 +44,9 @@ def demo(ctx: Context, *, offline: bool = False, setup: bool = True) -> dict:
     try:
         print("Validating frozen Elizabeth Yin memory (no generation)...", flush=True)
         copy_verified(
-            ctx.checkout("memory"), directory / "frozen-memory", artifacts["memory"]["files"]
+            fixture_source(ctx, artifacts["memory"], offline=offline),
+            directory / "frozen-memory",
+            artifacts["memory"]["files"],
         )
         wiki = directory / "frozen-memory" / artifacts["memory"]["path"]
         result = component_command(
@@ -107,7 +110,11 @@ def demo(ctx: Context, *, offline: bool = False, setup: bool = True) -> dict:
             "Running separate original Thoras assessment fixture (fake provider, v1)...", flush=True
         )
         workspace = directory / "assessment-workspace"
-        copy_verified(ctx.checkout("assessment"), workspace, artifacts["assessment"]["files"])
+        copy_verified(
+            fixture_source(ctx, artifacts["assessment"], offline=offline),
+            workspace,
+            artifacts["assessment"]["files"],
+        )
         config = artifacts["assessment"]["config"]
         for action in ("index", "run", "verify"):
             component_command(
