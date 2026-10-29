@@ -56,7 +56,10 @@ def main() -> None:
             ]
             print(
                 json.dumps(
-                    {"ready": bool(available), "errors": errors or ["No ready investor selected"]}
+                    {
+                        "ready": bool(available),
+                        "errors": errors or ([] if available else ["No ready investor selected"]),
+                    }
                 )
             )
             return
