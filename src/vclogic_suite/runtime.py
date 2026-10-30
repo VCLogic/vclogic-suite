@@ -116,12 +116,15 @@ def component_command(
 def fixture_source(ctx: Context, section: dict, *, offline: bool):
     """Frozen demo inputs live at their recorded commit; research code follows the main pins."""
     component = ctx.components[section["component"]]
+    # Only the listed files, under a short directory: old commits hold paths past Windows MAX_PATH.
     pinned = replace(
         component,
         commit=section["fixture_commit"],
-        directory=f"{component.directory}-{section['fixture_commit'][:12]}",
+        directory=f"{component.id}-{section['fixture_commit'][:12]}",
     )
-    return ensure_component(pinned, ctx.components_dir / "fixtures", offline=offline)
+    return ensure_component(
+        pinned, ctx.components_dir / "fixtures", offline=offline, paths=list(section["files"])
+    )
 
 
 def fetch_fixtures(ctx: Context, *, offline: bool = False) -> None:
@@ -230,7 +233,7 @@ def bootstrap(
                 "pip",
                 "install",
                 "--python",
-                str(project / ".venv/bin/python"),
+                str(project / ".venv"),
                 "--require-hashes",
                 "-r",
                 str(ctx.root / "configs/memory-pdf.lock"),
@@ -262,13 +265,14 @@ def bootstrap(
                     "Web assets missing in offline mode; bootstrap --profile web online"
                 )
             print("Building pinned web frontend with npm ci...", file=sys.stderr, flush=True)
+            npm = shutil.which("npm")  # full path: Windows ships npm as npm.cmd
             run(
-                ["npm", "ci", "--no-audit", "--no-fund"],
+                [npm, "ci", "--no-audit", "--no-fund"],
                 cwd=frontend,
                 log=ctx.workspace / "setup-logs/npm-ci.log",
             )
             run(
-                ["npm", "run", "build"],
+                [npm, "run", "build"],
                 cwd=frontend,
                 log=ctx.workspace / "setup-logs/npm-build.log",
             )

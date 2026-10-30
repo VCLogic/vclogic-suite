@@ -47,8 +47,12 @@ def load_components(path: Path) -> dict[str, Component]:
 
 
 def _git(path: Path, *args: str) -> str:
+    # core.longpaths lets Git for Windows exceed MAX_PATH; other platforms ignore it.
     process = subprocess.run(
-        ["git", "-C", str(path), *args], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        ["git", "-c", "core.longpaths=true", "-C", str(path), *args],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
     )
     if process.returncode:
         # Do not echo transport stderr: credential helpers/URLs can contain secrets.
@@ -71,7 +75,19 @@ def verify_component(component: Component, root: Path) -> Path:
     return target
 
 
-def ensure_component(component: Component, root: Path, *, offline: bool = False) -> Path:
+def _sparse(target: Path, paths: list[str] | None) -> None:
+    """Check out only `paths`; plain config + pattern file works on every Git version."""
+    if paths is None:
+        return
+    _git(target, "config", "core.sparseCheckout", "true")
+    patterns = target / ".git/info/sparse-checkout"
+    patterns.parent.mkdir(parents=True, exist_ok=True)
+    patterns.write_text("".join(f"/{path}\n" for path in sorted(paths)))
+
+
+def ensure_component(
+    component: Component, root: Path, *, offline: bool = False, paths: list[str] | None = None
+) -> Path:
     target = root / component.directory
     if target.exists() and not target.is_symlink() and not offline:
         try:
@@ -85,6 +101,7 @@ def ensure_component(component: Component, root: Path, *, offline: bool = False)
                 f"Component {component.id} is modified; refusing to overwrite or run it"
             )
         _git(target, "fetch", "--quiet", "--depth", "1", "origin", component.commit)
+        _sparse(target, paths)
         _git(target, "checkout", "--quiet", "--detach", component.commit)
     if target.exists() or target.is_symlink():
         return verify_component(component, root)
@@ -96,6 +113,7 @@ def ensure_component(component: Component, root: Path, *, offline: bool = False)
         _git(temporary, "init", "--quiet")
         _git(temporary, "remote", "add", "origin", component.repository)
         _git(temporary, "fetch", "--quiet", "--depth", "1", "origin", component.commit)
+        _sparse(temporary, paths)
         _git(temporary, "checkout", "--quiet", "--detach", component.commit)
         if _git(temporary, "rev-parse", "HEAD") != component.commit:
             raise ValueError(f"Fetched wrong revision for {component.id}")

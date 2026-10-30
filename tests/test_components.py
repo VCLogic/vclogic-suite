@@ -95,3 +95,38 @@ def test_clean_checkout_moves_to_new_pin(repository, tmp_path):
     with pytest.raises(ValueError, match="Wrong revision"):
         # Offline never fetches; a stale pin is reported, not silently used.
         ensure_component(component, tmp_path / "components", offline=True)
+
+
+def test_sparse_checkout_holds_only_listed_files_and_stays_clean(tmp_path):
+    from vclogic_suite.components import Component, ensure_component, verify_component
+
+    remote = tmp_path / "remote"
+    deep = remote / ("d" * 120) / ("e" * 120)
+    deep.mkdir(parents=True)
+    (deep / "too-long-for-windows.json").write_text("{}")
+    (remote / "keep").mkdir()
+    (remote / "keep/data.txt").write_text("frozen\n")
+    git(remote, "init", "-q")
+    git(remote, "config", "user.email", "test@example.invalid")
+    git(remote, "config", "user.name", "Fixture")
+    git(remote, "add", ".")
+    git(remote, "commit", "-qm", "fixture")
+    sha = git(remote, "rev-parse", "HEAD")
+    component = Component("example", str(remote), sha, "example", "example", "1", "fixture")
+    target = ensure_component(component, tmp_path / "components", paths=["keep/data.txt"])
+    assert sorted(p.name for p in target.iterdir()) == [".git", "keep"]
+    assert (target / "keep/data.txt").read_text() == "frozen\n"
+    assert verify_component(component, tmp_path / "components") == target
+
+
+def test_claude_skill_copy_matches_agents_skill():
+    # A real copy, not a symlink: Git on Windows checks symlinks out as text files.
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    source, copy = root / ".agents/skills/vclogic", root / ".claude/skills/vclogic"
+    assert not copy.is_symlink()
+    names = sorted(p.relative_to(source).as_posix() for p in source.rglob("*") if p.is_file())
+    assert names == sorted(p.relative_to(copy).as_posix() for p in copy.rglob("*") if p.is_file())
+    for name in names:
+        assert (source / name).read_bytes() == (copy / name).read_bytes(), name
