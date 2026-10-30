@@ -6,7 +6,7 @@
     {
       "id": "collector",
       "repository": "https://github.com/VCLogic/vclogic-vc-trace-collector.git",
-      "commit": "15edfd0cd97d8d4695cd403e27928bddf3e23018",
+      "commit": "111dfb1a7c54395df86a7587b723c51d80c101ab",
       "directory": "vclogic-vc-trace-collector",
       "package": "vc-trace-collector",
       "version": "0.1.0",
