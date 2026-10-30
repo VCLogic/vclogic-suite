@@ -12,7 +12,7 @@ All commands run from the suite root.
 uv sync
 uv run vclogic init          # fetch the five pinned repositories, install everything
 uv run vclogic doctor        # every component must say "pinned and clean"
-cp .env.example .env         # then fill only the credentials your providers need
+cp .env.example .env         # then fill it in: README.md, "Fill in .env"
 ```
 
 `init` also moves clean component checkouts to new pins after a suite update.
