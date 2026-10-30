@@ -38,6 +38,19 @@ class Context:
         return verify_component(self.components[name], self.components_dir)
 
 
+def share_uv_cache(root: Path) -> None:
+    """Use the uv cache configured for the suite in every component.
+
+    A component pyproject with its own [tool.uv] table stops uv's search for parent
+    uv.toml settings, so a cache-dir set above the suite would otherwise be ignored.
+    """
+    if "UV_CACHE_DIR" in os.environ or shutil.which("uv") is None:
+        return
+    found = subprocess.run(["uv", "cache", "dir"], cwd=root, text=True, capture_output=True)
+    if found.returncode == 0 and found.stdout.strip():
+        os.environ["UV_CACHE_DIR"] = found.stdout.strip()
+
+
 def execution_environment(*, no_keys: bool = False) -> dict[str, str]:
     env = {
         k: v

@@ -10,7 +10,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from .components import ensure_component, verify_component
-from .runtime import Context, bootstrap, progress
+from .runtime import Context, bootstrap, progress, share_uv_cache
 
 
 def find_root(explicit: Path | None) -> Path:
@@ -105,6 +105,7 @@ def main(argv: list[str] | None = None) -> int:
             (args.components_dir or root / ".components").resolve(),
             (args.workspace or root / "workspace").resolve(),
         )
+        share_uv_cache(root)
         if args.command == "init":
             for name in progress(ctx.components, "Fetch repositories"):
                 ensure_component(ctx.components[name], ctx.components_dir, offline=args.offline)

@@ -130,3 +130,14 @@ def test_claude_skill_copy_matches_agents_skill():
     assert names == sorted(p.relative_to(copy).as_posix() for p in copy.rglob("*") if p.is_file())
     for name in names:
         assert (source / name).read_bytes() == (copy / name).read_bytes(), name
+
+
+def test_suite_uv_cache_reaches_components_with_own_uv_config(tmp_path, monkeypatch):
+    import os
+
+    from vclogic_suite.runtime import share_uv_cache
+
+    monkeypatch.delenv("UV_CACHE_DIR", raising=False)
+    (tmp_path / "uv.toml").write_text(f'cache-dir = "{(tmp_path / "cache").as_posix()}"\n')
+    share_uv_cache(tmp_path)
+    assert os.environ["UV_CACHE_DIR"] == str(tmp_path / "cache")
