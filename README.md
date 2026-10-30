@@ -4,7 +4,12 @@ VCLogic studies an evidence-grounded approximation of an investor’s observable
 
 ## Install everything
 
-Requires Python **3.12.12**, **uv 0.9.17**, Git, and Node.js/npm.
+Requires Python **3.12.12**, **uv 0.9.17**, Git, and Node.js/npm. The collector also needs two host tools; `init` lists any that are missing:
+
+| Tool | Install |
+|---|---|
+| ffmpeg | Windows `winget install Gyan.FFmpeg` · macOS `brew install ffmpeg` · Linux `sudo apt install ffmpeg`. Open a new terminal afterwards. |
+| mcporter with Exa search | `npm install -g mcporter`, then `mcporter config add exa https://mcp.exa.ai/mcp --scope home`. Test it with `mcporter call exa.web_search_exa query=test numResults=1`. |
 
 ```bash
 uv sync

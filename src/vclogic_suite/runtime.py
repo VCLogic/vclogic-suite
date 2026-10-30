@@ -319,11 +319,13 @@ def bootstrap(
         except ValueError:
             browser_ok = False
         requirements = {
-            "ffmpeg": "Install ffmpeg with your operating system package manager.",
+            "ffmpeg": "Install ffmpeg (winget install Gyan.FFmpeg, brew install ffmpeg, "
+            "or apt install ffmpeg), then open a new terminal.",
             "node": "Install a Node.js version supported by the web component.",
             "npm": "Install npm with Node.js.",
             # The wizard searches Exa through mcporter; the agent-reach binary is optional diagnostics.
-            "mcporter": "Install mcporter with an Exa server for the collector's Agent Reach/Exa search.",
+            "mcporter": "npm install -g mcporter, then "
+            "mcporter config add exa https://mcp.exa.ai/mcp --scope home",
         }
         missing = {
             name: advice for name, advice in requirements.items() if shutil.which(name) is None
