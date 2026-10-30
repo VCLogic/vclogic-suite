@@ -41,7 +41,7 @@ Optional; leave blank unless one applies:
 
 | Variable | Set it when |
 |---|---|
-| `VC_TRACE_AV_DEVICE` | You have an NVIDIA GPU: `cuda` makes transcription much faster. The default is `cpu`. |
+| `VC_TRACE_AV_DEVICE` | Leave `cpu` (the default). `cuda` helps only on Linux with an NVIDIA GPU; Windows installs a CPU-only PyTorch, so the collector falls back to CPU there. |
 | `OPENAI_API_KEY` | You switched an assessment config to the OpenAI provider |
 | `VC_TRACE_SEARCH_ENDPOINT` | You run your own SearXNG and want the collector to search through it |
 | `VC_TRACE_LLM_ENDPOINT`, `VC_TRACE_LLM_API_KEY`, `VC_TRACE_DISCOVERY_MODEL` | You want model-assisted source discovery. All three are needed together. |
