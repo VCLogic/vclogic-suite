@@ -71,7 +71,17 @@ uv run vclogic assess --investor investor-slug --pitch /abs/pitch.txt --company 
 uv run vclogic web --allow-paid                           # every installed investor in the UI
 ```
 
-Only collection is interactive: the collector's guided wizard asks for identity and source review. Memory generation uses Codex or Claude Code, selected with `[memory] harness`. Rerunning `run` skips finished stages. Newly onboarded investors appear in a running web app without a restart. `assess` prints the investor's rationales and decision and saves them under `workspace/research/assessments/`. Set `allow_paid = true` in `vclogic.toml` to stop passing `--allow-paid`. Agents can use the `/vclogic` skill in `.agents/skills/vclogic/`. See [the full research workflow](docs/full-pipeline.md) for every step.
+**What `--allow-paid` means.** It is a safety switch, not a setting. It selects no model, sets no budget and unlocks no feature. It records that you accept that the command may spend money, and without it these steps refuse to start:
+
+| Step | Spends money on |
+|---|---|
+| memory (inside `run`) | Your Codex or Claude Code plan or usage while it writes the investment memory |
+| `assess` and `web` | OpenRouter calls billed to `OPENROUTER_API_KEY` |
+| `onboard -- --from-pitch-show` | LLM extraction of Pitch Show decisions |
+
+Collection does not need it. The collector wizard asks for its own search cost limit, and `0` is fine for free search. To stop typing the flag, set `allow_paid = true` in `vclogic.toml`.
+
+Only collection is interactive: the collector's guided wizard asks for identity and source review. Memory generation uses Codex or Claude Code, selected with `[memory] harness`. Rerunning `run` skips finished stages. Newly onboarded investors appear in a running web app without a restart. `assess` prints the investor's rationales and decision and saves them under `workspace/research/assessments/`. Agents can use the `/vclogic` skill in `.agents/skills/vclogic/`. See [the full research workflow](docs/full-pipeline.md) for every step.
 
 ## No-key reviewer demonstration
 

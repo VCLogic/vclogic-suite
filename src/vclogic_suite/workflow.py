@@ -86,7 +86,9 @@ def add_commands(commands):
             command.add_argument("--name", help="Investor name for a new collection")
         if name in ("memory", "onboard", "pipeline", "run"):
             command.add_argument(
-                "--allow-paid", action="store_true", help="Permit model-backed generation"
+                "--allow-paid",
+                action="store_true",
+                help="Accept that this may spend money on model calls (memory, Pitch Show extraction)",
             )
         if name in ("onboard", "run"):
             command.add_argument(

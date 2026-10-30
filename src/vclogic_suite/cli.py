@@ -80,7 +80,9 @@ def parser() -> argparse.ArgumentParser:
             help="Native rehearsal TOML; defaults to installed investor config",
         )
         command.add_argument(
-            "--allow-paid", action="store_true", help="Permit configured provider-backed operations"
+            "--allow-paid",
+            action="store_true",
+            help="Accept that this may spend money on model calls (OpenRouter/OpenAI)",
         )
         if name == "assess":
             command.add_argument("--investor", required=True)
