@@ -34,12 +34,8 @@ def check_credentials(config: dict) -> None:
 
 
 def launch(ctx: Context, args) -> int:
-    from .workflow import allow_paid, settings
+    from .workflow import settings
 
-    if not allow_paid(ctx, args):
-        raise ValueError(
-            "Live research operations require --allow-paid (or allow_paid = true in vclogic.toml)"
-        )
     workspace = (args.research_workspace or ctx.workspace / "research/pipeline").resolve()
     if args.config is None and args.command == "web" and not args.investor:
         # Any installed rehearsal config starts the app; the UI then lists every installed investor.

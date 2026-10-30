@@ -33,22 +33,21 @@ pick the default search backend in the wizard. The `agent-reach` executable is o
 | File | Holds | Committed |
 |---|---|---|
 | `.env` | Secrets: `OPENROUTER_API_KEY`, `HF_TOKEN`, collector endpoints | Never |
-| `vclogic.toml` | Settings: `allow_paid`, memory `harness`, extra native options per stage, web port | Yes |
+| `vclogic.toml` | Settings: memory `harness`, extra native options per stage, web port | Yes |
 
 Every research command loads both. Shell-exported variables win over `.env`, and
 command-line flags win over `vclogic.toml`. `.env` values are literal (no `${...}`
 expansion), and component-local `.env` files are ignored. No-key `test`, `demo`
 and `verify` load neither file.
 
-Set `allow_paid = true` in `vclogic.toml` once you accept that memory generation,
-Pitch Show extraction and assessments spend money. Otherwise, pass `--allow-paid`
-to those commands. To choose the memory harness without being asked, set
-`harness = "codex"` or `harness = "claude"`.
+Memory generation, Pitch Show extraction and assessments spend money (Codex or
+Claude Code usage, OpenRouter credit). To choose the memory harness without being
+asked, set `harness = "codex"` or `harness = "claude"`.
 
 ### 2. Run the whole investor pipeline
 
 ```bash
-uv run vclogic run --name "Jane Roe" --allow-paid
+uv run vclogic run --name "Jane Roe"
 ```
 
 1. **Collect (interactive).** The collector's guided wizard confirms the identity,
@@ -64,7 +63,7 @@ uv run vclogic run --name "Jane Roe" --allow-paid
 `run` resumes. Rerun it with the slug it printed:
 
 ```bash
-uv run vclogic run --investor jane-roe --allow-paid
+uv run vclogic run --investor jane-roe
 ```
 
 A finished collection is not repeated, and an existing memory is revalidated rather
@@ -75,14 +74,14 @@ The same stages run one at a time:
 ```bash
 uv run vclogic collect --name "Jane Roe"          # or --investor jane-roe to resume
 uv run vclogic process --investor jane-roe        # only to re-process/export/verify
-uv run vclogic memory  --investor jane-roe --allow-paid
+uv run vclogic memory  --investor jane-roe
 uv run vclogic onboard --investor jane-roe
 ```
 
 ### 3. Assess a pitch
 
 ```bash
-uv run vclogic assess --investor jane-roe --pitch /abs/path/pitch.txt --company "Acme" --allow-paid
+uv run vclogic assess --investor jane-roe --pitch /abs/path/pitch.txt --company "Acme"
 ```
 
 The engine builds the investor's assessment: Phase 1 investigates the investor's
@@ -95,7 +94,7 @@ continue as a rehearsal in the web app.
 ### 4. Web interface
 
 ```bash
-uv run vclogic web --allow-paid
+uv run vclogic web
 ```
 
 The command serves every installed investor at `http://localhost:8000` (or the
@@ -132,8 +131,8 @@ Native options can be set per stage in `vclogic.toml` (`[memory] args = [...]`),
 after `--` for a single run. Suite-managed paths cannot be overridden:
 
 ```bash
-uv run vclogic memory --investor jane-roe --allow-paid -- --harness claude --model sonnet
-uv run vclogic onboard --investor jane-roe --allow-paid -- --from-pitch-show --max-episodes 5
+uv run vclogic memory --investor jane-roe -- --harness claude --model sonnet
+uv run vclogic onboard --investor jane-roe -- --from-pitch-show --max-episodes 5
 ```
 
 `onboard --skip-indexes` produces an explicitly partial bundle
@@ -141,7 +140,7 @@ uv run vclogic onboard --investor jane-roe --allow-paid -- --from-pitch-show --m
 never overwrites an installed bundle.
 
 For an already prepared historical pitch package, `uv run vclogic pipeline --investor
-<slug> --config configs/investors/<slug>/canonical.toml --allow-paid` runs native
+<slug> --config configs/investors/<slug>/canonical.toml` runs native
 `vc-clone-graph preflight`, `run` and `verify`.
 
 `init` installs every locked extra: embeddings, personalized assessment, collector
@@ -207,10 +206,10 @@ The suite research adapter currently requires a grounded rehearsal config with `
 For a new pitch, the suite adapter delegates to existing rehearsal start and requires explicit cost authorization:
 
 ```bash
-uv run vclogic assess --workspace /absolute/research/workspace --config /absolute/research/workspace/configs/rehearsal.toml --investor <slug> --pitch /absolute/research/pitch.txt --allow-paid
+uv run vclogic assess --workspace /absolute/research/workspace --config /absolute/research/workspace/configs/rehearsal.toml --investor <slug> --pitch /absolute/research/pitch.txt
 ```
 
-Configure generation and embedding providers separately if required, set their selected credential names in the suite root `.env`, and prepare models/indexes first. `--allow-paid` authorizes the adapter's live path; it does not promise a budget or free local execution. Memory generation uses the Codex or Claude Code login; OpenRouter/OpenAI assessment uses configured API-key names; local Ollama requires its own running service and weights. `.env.example` contains placeholders only.
+Configure generation and embedding providers separately if required, set their selected credential names in the suite root `.env`, and prepare models/indexes first. Memory generation uses the Codex or Claude Code login; OpenRouter/OpenAI assessment uses configured API-key names; local Ollama requires its own running service and weights. `.env.example` contains placeholders only.
 
 Preserve investigation and decision JSON separately, their hash binding, retrieval reads, source quotations, native configuration, model identity and usage/provenance receipts. Evaluate rationales against independently reviewed rationales and investment decisions against independent outcomes, retaining abstentions, failures and coverage. A publication archive and exact evaluation specification have not yet been supplied, so no generic evaluation command is claimed to reproduce the paper.
 
@@ -222,7 +221,7 @@ Use a ready prepared workspace and native rehearsal config:
 
 ```bash
 uv run vclogic bootstrap --profile web
-uv run vclogic web --workspace /absolute/research/workspace --config /absolute/research/workspace/configs/rehearsal.toml --allow-paid
+uv run vclogic web --workspace /absolute/research/workspace --config /absolute/research/workspace/configs/rehearsal.toml
 ```
 
 The UI uses the assessment engine and can make live provider calls when the user starts research actions. The default partial demo bundle does not meet its readiness requirements. HTTP health alone does not validate an investor. Preserve projects, sessions, settings, snapshots, checkpoints and outputs. See [Docker](docker.md) for the core container and why a web container is not included in this release.

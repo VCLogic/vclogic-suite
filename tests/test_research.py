@@ -3,16 +3,6 @@ import argparse
 import pytest
 
 
-def test_live_operations_require_explicit_opt_in_before_bootstrap(tmp_path):
-    from vclogic_suite.research import launch
-    from vclogic_suite.runtime import Context
-
-    ctx = Context(tmp_path, tmp_path / "components", tmp_path / "outputs")
-    args = argparse.Namespace(command="assess", allow_paid=False)
-    with pytest.raises(ValueError, match="allow-paid"):
-        launch(ctx, args)
-
-
 def test_missing_provider_key_is_named_without_value(tmp_path, monkeypatch):
     from vclogic_suite.research import check_credentials
 
@@ -34,8 +24,6 @@ def test_web_without_installed_investor_is_actionable(tmp_path):
 
     ctx = Context(tmp_path, tmp_path / "components", tmp_path / "outputs")
     (ctx.workspace / "research/pipeline").mkdir(parents=True)
-    args = argparse.Namespace(
-        command="web", allow_paid=True, research_workspace=None, config=None, investor=None
-    )
+    args = argparse.Namespace(command="web", research_workspace=None, config=None, investor=None)
     with pytest.raises(ValueError, match="vclogic run"):
         launch(ctx, args)

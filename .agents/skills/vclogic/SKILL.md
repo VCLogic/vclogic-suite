@@ -17,8 +17,8 @@ Run from the suite root (the directory with `manifests/components.lock.json`).
 1. `uv run vclogic doctor`: every component must report `pinned and clean`.
    Otherwise ask the user to run `uv run vclogic init` (large download; it does not
    run models).
-2. Read `vclogic.toml`. If `allow_paid = false`, paid stages need `--allow-paid`.
-   Ask before adding it: memory generation and assessment spend money.
+2. Memory generation and assessment spend money (Codex/Claude usage, OpenRouter
+   credit). Confirm with the user before starting them.
 3. Never print, copy or commit `.env` values. Report a missing credential by name only.
 
 ## New investor
@@ -39,7 +39,7 @@ reruns the same command with `--investor <slug>` to resume.
 Then continue unattended:
 
 ```bash
-uv run vclogic run --investor <slug> --allow-paid
+uv run vclogic run --investor <slug>
 ```
 
 `run` skips finished stages. It builds the memory (`investor-memory full-build`),
@@ -49,16 +49,16 @@ validates it, prepares and checks the onboarding bundle, and installs it into
 Memory generation uses a local harness, Codex or Claude Code. Shell calls from an
 agent are non-interactive, so `harness = "auto"` stops when both are installed.
 Then ask the user which one to use and run the memory stage explicitly:
-`uv run vclogic memory --investor <slug> --allow-paid -- --harness claude`.
+`uv run vclogic memory --investor <slug> -- --harness claude`.
 Rerun `run` afterwards.
 
-If the user types the whole flow themselves, `! uv run vclogic run --name "Investor Name" --allow-paid`
+If the user types the whole flow themselves, `! uv run vclogic run --name "Investor Name"`
 does collection and everything after it in one command.
 
 ## Assess a pitch
 
 ```bash
-uv run vclogic assess --investor <slug> --pitch /abs/path/pitch.txt --company "Company" --allow-paid
+uv run vclogic assess --investor <slug> --pitch /abs/path/pitch.txt --company "Company"
 ```
 
 This runs Phase 1 (rationale investigation) and Phase 2 (decision synthesis), then
@@ -70,7 +70,7 @@ evidence IDs. Do not invent scores the output does not contain.
 
 ## Web interface
 
-`uv run vclogic web --allow-paid` serves the UI (port from `vclogic.toml`) for all
+`uv run vclogic web` serves the UI (port from `vclogic.toml`) for all
 installed investors. It runs until stopped, so start it in the background. Newly onboarded
 investors appear without a restart.
 

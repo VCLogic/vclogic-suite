@@ -57,17 +57,11 @@ def settings(root: Path) -> dict:
     """Shared non-secret suite settings; a missing vclogic.toml means defaults."""
     path = root / "vclogic.toml"
     data = tomllib.loads(path.read_text()) if path.is_file() else {}
-    if not isinstance(data.get("allow_paid", False), bool):
-        raise ValueError("vclogic.toml: allow_paid must be true or false")
     for stage in ("process", "memory", "onboard"):
         extra = data.get(stage, {}).get("args", [])
         if not isinstance(extra, list) or not all(isinstance(item, str) for item in extra):
             raise ValueError(f"vclogic.toml: [{stage}] args must be a list of strings")
     return data
-
-
-def allow_paid(ctx: Context, args) -> bool:
-    return bool(getattr(args, "allow_paid", False) or settings(ctx.root).get("allow_paid"))
 
 
 def add_commands(commands):
@@ -84,12 +78,6 @@ def add_commands(commands):
         command.add_argument("--investor", help="Collector investor slug")
         if name in ("collect", "run"):
             command.add_argument("--name", help="Investor name for a new collection")
-        if name in ("memory", "onboard", "pipeline", "run"):
-            command.add_argument(
-                "--allow-paid",
-                action="store_true",
-                help="Accept that this may spend money on model calls (memory, Pitch Show extraction)",
-            )
         if name in ("onboard", "run"):
             command.add_argument(
                 "--skip-indexes", action="store_true", help="Create a partial, non-ready bundle"
@@ -155,7 +143,6 @@ def run_stage(ctx: Context, args) -> int:
     extras = [*config.get(args.command, {}).get("args", []), *extras]
     if args.command == "memory" and "--harness" not in {e.split("=", 1)[0] for e in extras}:
         extras = ["--harness", config.get("memory", {}).get("harness", "auto"), *extras]
-    paid = allow_paid(ctx, args)
     for token in extras:
         if token.startswith("-") and not re.fullmatch(r"-\d+(\.\d+)?", token):
             if token.split("=", 1)[0] not in OPTIONS[args.command]:
@@ -167,17 +154,6 @@ def run_stage(ctx: Context, args) -> int:
     pipeline = root / "pipeline"
     wiki = root / "wiki" / (slug or "")
     bundle = root / "bundles" / (slug or "")
-    if args.command in ("memory", "pipeline") and not paid:
-        raise ValueError(
-            "This stage requires --allow-paid (or allow_paid = true in vclogic.toml) for model generation"
-        )
-    if (
-        args.command == "onboard"
-        and "--from-pitch-show" in extras
-        and "--collect-only" not in extras
-        and not paid
-    ):
-        raise ValueError("Pitch Show extraction requires --allow-paid (or --collect-only)")
     root.mkdir(parents=True, exist_ok=True)
     calls = []
     if args.command == "collect":
@@ -315,10 +291,6 @@ def run_all(ctx: Context, args) -> int:
     """Chain the stages for one investor; finished stages are skipped, so rerunning resumes."""
     if not (args.investor or args.name):
         raise ValueError("run requires --name for a new investor or --investor to resume")
-    if not allow_paid(ctx, args):
-        raise ValueError(
-            "run includes memory generation; pass --allow-paid or set allow_paid = true in vclogic.toml"
-        )
     if [arg for arg in args.native_args if arg != "--"]:
         raise ValueError(
             "run reads native options from vclogic.toml; use single stages for -- options"
@@ -332,7 +304,6 @@ def run_all(ctx: Context, args) -> int:
             command=stage_name,
             investor=slug,
             name=None,
-            allow_paid=True,
             skip_indexes=args.skip_indexes,
             config=None,
             native_args=[],

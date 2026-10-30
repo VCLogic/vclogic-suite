@@ -43,17 +43,8 @@ def test_workflow_rejects_path_escape(tmp_path):
     from vclogic_suite.workflow import run_stage
 
     ctx = Context(tmp_path, tmp_path / "components", tmp_path / "workspace")
-    args = parser().parse_args(["memory", "--investor", "../escape", "--allow-paid"])
+    args = parser().parse_args(["memory", "--investor", "../escape"])
     with pytest.raises(ValueError, match="slug"):
-        run_stage(ctx, args)
-
-
-def test_memory_requires_explicit_generation_opt_in(tmp_path):
-    from vclogic_suite.workflow import run_stage
-
-    ctx = Context(tmp_path, tmp_path / "components", tmp_path / "workspace")
-    args = parser().parse_args(["memory", "--investor", "example-vc"])
-    with pytest.raises(ValueError, match="allow-paid"):
         run_stage(ctx, args)
 
 
@@ -155,9 +146,7 @@ def test_pipeline_stops_on_preflight_failure(tmp_path, monkeypatch):
 
     monkeypatch.setattr(workflow, "invoke", invoke)
     ctx = Context(tmp_path, tmp_path / "components", tmp_path)
-    args = parser().parse_args(
-        ["pipeline", "--investor", "example", "--config", "native.toml", "--allow-paid"]
-    )
+    args = parser().parse_args(["pipeline", "--investor", "example", "--config", "native.toml"])
     assert workflow.run_stage(ctx, args) == 1
     assert [c[1] for c in calls] == ["preflight"]
 
@@ -223,11 +212,11 @@ def test_collect_runs_guided_wizard_into_suite_traces(tmp_path, monkeypatch):
         workflow.run_stage(ctx, parser().parse_args(["collect"]))
 
 
-def test_memory_harness_and_paid_permission_come_from_settings(tmp_path, monkeypatch):
+def test_memory_harness_comes_from_settings(tmp_path, monkeypatch):
     from vclogic_suite import workflow
 
     (tmp_path / "vclogic.toml").write_text(
-        'allow_paid = true\n[memory]\nharness = "claude"\nargs = ["--workers", "2"]\n'
+        '[memory]\nharness = "claude"\nargs = ["--workers", "2"]\n'
     )
     monkeypatch.setattr(workflow.shutil, "which", lambda name: name if name == "claude" else None)
     calls = []
@@ -276,7 +265,7 @@ def test_run_chains_stages_and_skips_finished_ones(tmp_path, monkeypatch):
     monkeypatch.setattr(
         workflow, "component_command", lambda *a, **kw: '{"valid":true,"ready_for_assessment":true}'
     )
-    args = parser().parse_args(["run", "--name", "Jane Roe", "--allow-paid"])
+    args = parser().parse_args(["run", "--name", "Jane Roe"])
     assert workflow.run_stage(ctx, args) == 0
     assert seen == ["wizard", "verify", "full-build", "check", "prepare", "install"]
     # Second run: collection finished, memory exists, investor installed -> nothing regenerated.
@@ -285,7 +274,7 @@ def test_run_chains_stages_and_skips_finished_ones(tmp_path, monkeypatch):
     installed.mkdir(parents=True)
     (installed / "jane-roe-acme.toml").write_text("")
     seen.clear()
-    args = parser().parse_args(["run", "--investor", "jane-roe-acme", "--allow-paid"])
+    args = parser().parse_args(["run", "--investor", "jane-roe-acme"])
     assert workflow.run_stage(ctx, args) == 0
     assert seen == ["check"]
 
@@ -295,11 +284,9 @@ def test_run_stops_when_collection_unfinished(tmp_path, monkeypatch, capsys):
 
     monkeypatch.setattr(workflow, "invoke", lambda *a, **kw: 0)
     ctx = Context(tmp_path, tmp_path / "components", tmp_path / "workspace")
-    args = parser().parse_args(["run", "--name", "Jane Roe", "--allow-paid"])
+    args = parser().parse_args(["run", "--name", "Jane Roe"])
     assert workflow.run_stage(ctx, args) == 1
     assert "--investor jane-roe" in capsys.readouterr().out
-    with pytest.raises(ValueError, match="allow-paid"):
-        workflow.run_stage(ctx, parser().parse_args(["run", "--name", "Jane Roe"]))
 
 
 def test_proxy_without_opt_in_warns(monkeypatch):
