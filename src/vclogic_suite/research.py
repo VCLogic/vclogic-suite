@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from .files import safe_path
-from .runtime import Context, component_command, execution_environment
+from .runtime import Context, component_command, execution_environment, long_path
 
 
 def check_credentials(config: dict) -> None:
@@ -86,7 +86,7 @@ def launch(ctx: Context, args) -> int:
         command = [
             "vc-clone-web",
             "--pipeline-workspace",
-            str(workspace),
+            str(long_path(workspace)),
             "--config",
             relative,
             "--static-root",
@@ -96,7 +96,7 @@ def launch(ctx: Context, args) -> int:
         ]
         for flag, folder in (("--investor-bundles", "bundles"), ("--investment-memory", "wiki")):
             if (ctx.workspace / "research" / folder).is_dir():
-                command += [flag, str(ctx.workspace / "research" / folder)]
+                command += [flag, str(long_path(ctx.workspace / "research" / folder))]
     else:
         session = f"{args.investor}-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
         command = [
@@ -120,7 +120,7 @@ def launch(ctx: Context, args) -> int:
     )
     code = subprocess.call(
         ["uv", "run", "--offline", "--no-sync", "--project", str(project), *command],
-        cwd=workspace,
+        cwd=long_path(workspace),
         env=execution_environment(no_keys=False),
     )
     if code or args.command == "web":

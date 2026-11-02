@@ -40,6 +40,7 @@ def test_init_fetches_all_pins_and_installs_all(monkeypatch, tmp_path, capsys):
     from vclogic_suite import cli
 
     fetched, installed = [], []
+    monkeypatch.setattr(cli, "cuda_requested", lambda root: True)
     monkeypatch.setattr(
         cli, "ensure_component", lambda item, directory, **kw: fetched.append(item.id)
     )
@@ -51,7 +52,7 @@ def test_init_fetches_all_pins_and_installs_all(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(cli, "bootstrap", install)
     assert cli.main(["--root", str(ROOT), "--components-dir", str(tmp_path), "init"]) == 0
     assert len(fetched) == 5
-    assert installed == [("all", {"offline": False, "full": True})]
+    assert installed == [("all", {"offline": False, "cuda": True, "full": True})]
     assert json.loads(capsys.readouterr().out)["ready"]
 
 

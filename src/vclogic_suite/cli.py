@@ -10,7 +10,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from .components import ensure_component, verify_component
-from .runtime import Context, bootstrap, progress, share_uv_cache
+from .runtime import Context, bootstrap, cuda_requested, progress, share_uv_cache
 
 
 def find_root(explicit: Path | None) -> Path:
@@ -66,6 +66,28 @@ def parser() -> argparse.ArgumentParser:
         "verify", help="Revalidate a saved demo through component validators"
     )
     verify.add_argument("--run", type=Path)
+    data = commands.add_parser(
+        "install-data", help="Copy the VCLogic data bundle into the research workspace"
+    )
+    data.add_argument("bundle", type=Path, help="The unzipped data bundle folder")
+    predictions = commands.add_parser(
+        "predictions", help="Write predictions.csv from assessment runs (no model calls)"
+    )
+    predictions.add_argument(
+        "--runs", type=Path, action="append", required=True,
+        help="Folder of runs, e.g. the bundle's research/predictions_original; repeatable",
+    )
+    predictions.add_argument(
+        "--out", type=Path,
+        help="Default: workspace/research/pipeline/proposal-evaluation/data/predictions.csv",
+    )
+    predictions.add_argument("--force", action="store_true", help="Replace an existing --out file")
+    evaluation = commands.add_parser(
+        "evaluate", help="Reproduce the proposal's tables and figures (no model calls)"
+    )
+    evaluation.add_argument("--quick", action="store_true", help="200 resamples; approximate intervals")
+    evaluation.add_argument("--annotations", type=Path, help="Default: the bundle's annotations.csv")
+    evaluation.add_argument("--predictions", type=Path, help="Default: the bundle's predictions.csv")
     from .workflow import add_commands
 
     add_commands(commands)
@@ -113,6 +135,7 @@ def main(argv: list[str] | None = None) -> int:
                 ctx,
                 args.profile,
                 offline=args.offline,
+                cuda=cuda_requested(root),
                 **(
                     {"full": True}
                     if args.profile == "all"
@@ -127,7 +150,7 @@ def main(argv: list[str] | None = None) -> int:
                 rows.append(asdict(item))
             result = {"components": rows}
         elif args.command == "bootstrap":
-            result = bootstrap(ctx, args.profile, offline=args.offline)
+            result = bootstrap(ctx, args.profile, offline=args.offline, cuda=cuda_requested(root))
         elif args.command == "doctor":
             status = {}
             for name, item in ctx.components.items():
@@ -157,6 +180,20 @@ def main(argv: list[str] | None = None) -> int:
                     "publication",
                 )
             }
+        elif args.command == "install-data":
+            from .data import install_data
+
+            result = install_data(ctx, args.bundle)
+        elif args.command == "predictions":
+            from .data import build_predictions
+
+            return build_predictions(ctx, args.runs, args.out, args.force)
+        elif args.command == "evaluate":
+            from .data import evaluate
+
+            return evaluate(
+                ctx, quick=args.quick, annotations=args.annotations, predictions=args.predictions
+            )
         elif args.command == "verify":
             from .verification import verify_run
 

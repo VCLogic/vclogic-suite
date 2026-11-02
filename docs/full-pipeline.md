@@ -54,11 +54,11 @@ uv run vclogic run --name "Jane Roe"
    lets you skip platforms, triage sources, download them, pick voice references,
    then process, export and verify the corpus. This is the only step that needs you.
    Quitting saves progress.
-2. **Memory.** The suite verifies the export, then runs `investor-memory full-build`
-   with the harness from `vclogic.toml`, then validates the memory.
-3. **Onboard.** The suite prepares the bundle with semantic indexes, checks that it
-   is valid and `ready_for_assessment`, then installs it into the pipeline workspace.
-4. The suite prints the commands for assessment and the web app.
+2. **Memory and onboarding.** The suite verifies the export, runs
+   `investor-memory full-build` with the harness from `vclogic.toml`, and validates
+   the memory. It then prepares the bundle with semantic indexes, checks that it is
+   valid and `ready_for_assessment`, and installs it into the pipeline workspace.
+3. The suite prints the commands for assessment and the web app.
 
 `run` resumes. Rerun it with the slug it printed:
 
@@ -74,9 +74,16 @@ The same stages run one at a time:
 ```bash
 uv run vclogic collect --name "Jane Roe"          # or --investor jane-roe to resume
 uv run vclogic process --investor jane-roe        # only to re-process/export/verify
-uv run vclogic memory  --investor jane-roe
-uv run vclogic onboard --investor jane-roe
+uv run vclogic memory  --investor jane-roe        # memory, then onboarding and install
+uv run vclogic onboard --investor jane-roe        # only to repeat onboarding
 ```
+
+### When collection does not verify
+
+If the wizard ends with `NOT verified`, or `run` stops at `memory: collector / verify`
+with `Quality report did not pass`, follow
+[If collection does not verify](../README.md#if-collection-does-not-verify) in the
+README. Rerunning `run` repeats the error until the collection is fixed in the wizard.
 
 ### 3. Assess a pitch
 

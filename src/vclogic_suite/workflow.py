@@ -68,8 +68,8 @@ def add_commands(commands):
     descriptions = {
         "collect": "Guided collection: identity, sources, triage, download, process, export",
         "process": "Re-run processing, export and verification of downloaded sources",
-        "memory": "Build and validate investment memory from the full collector export",
-        "onboard": "Prepare, validate and install the investor bundle",
+        "memory": "Build and validate the investment memory, then onboard and install it",
+        "onboard": "Repeat onboarding only: prepare, validate and install the bundle",
         "pipeline": "Run native historical assessment preflight, run and verify",
         "run": "New investor end to end: collect, memory, onboard, install for web/assess",
     }
@@ -78,7 +78,7 @@ def add_commands(commands):
         command.add_argument("--investor", help="Collector investor slug")
         if name in ("collect", "run"):
             command.add_argument("--name", help="Investor name for a new collection")
-        if name in ("onboard", "run"):
+        if name in ("memory", "onboard", "run"):
             command.add_argument(
                 "--skip-indexes", action="store_true", help="Create a partial, non-ready bundle"
             )
@@ -143,6 +143,10 @@ def run_stage(ctx: Context, args) -> int:
     extras = [*config.get(args.command, {}).get("args", []), *extras]
     if args.command == "memory" and "--harness" not in {e.split("=", 1)[0] for e in extras}:
         extras = ["--harness", config.get("memory", {}).get("harness", "auto"), *extras]
+    # An empty model lets the memory build ask in a terminal, or use the harness default.
+    model = config.get("memory", {}).get("model", "")
+    if args.command == "memory" and model and "--model" not in {e.split("=", 1)[0] for e in extras}:
+        extras = ["--model", model, *extras]
     for token in extras:
         if token.startswith("-") and not re.fullmatch(r"-\d+(\.\d+)?", token):
             if token.split("=", 1)[0] not in OPTIONS[args.command]:
@@ -171,14 +175,14 @@ def run_stage(ctx: Context, args) -> int:
                 str(traces),
             ]
             calls.append(("collector", command + (extras if operation == "process" else [])))
+    elif args.command == "memory" and wiki.exists():
+        # An existing memory is never regenerated: recheck it, then onboard below.
+        print(f"memory: {wiki} exists, checking it", flush=True)
+        calls.append(("onboarding", ["investor-memory", "check", str(wiki)]))
     elif args.command == "memory":
         if shutil.which("codex") is None and shutil.which("claude") is None:
             raise ValueError(
                 "Memory full-build needs an authenticated Codex or Claude Code CLI on PATH; .env API keys do not replace their login"
-            )
-        if wiki.exists():
-            raise ValueError(
-                f"Memory output already exists: {wiki}; preserve it or choose a new --workspace"
             )
         # Verify source export before paid generation; do not rewrite legacy admission rules.
         calls.append(
@@ -236,7 +240,41 @@ def run_stage(ctx: Context, args) -> int:
         print(f"{args.command}: {component} / {command[1]}", flush=True)
         code = invoke(ctx, component, command, cwd=pipeline if args.command == "pipeline" else root)
         if code:
+            if args.command == "memory" and command[1] == "verify":
+                # Rerunning run cannot help: a finished collection is not repeated.
+                print(
+                    f"The collected corpus did not verify; see {traces / slug / 'quality_report.json'}.\n"
+                    f"  Fix it: uv run vclogic collect --investor {slug}"
+                    " (answer yes to 'Redo from a step?', choose triage, set roles with r)\n"
+                    f"  Then:   uv run vclogic memory --investor {slug}\n"
+                    "  Guide:  README.md#if-collection-does-not-verify",
+                    flush=True,
+                )
+            elif args.command == "memory" and command[1] == "check":
+                print("Memory is invalid; inspect it or use a new --workspace.", flush=True)
             return code
+    if args.command == "memory":
+        if (pipeline / "inputs/investors" / f"{slug}.toml").is_file():
+            print("memory: investor already installed in the pipeline workspace", flush=True)
+        else:
+            onboard = argparse.Namespace(
+                command="onboard",
+                investor=slug,
+                name=None,
+                skip_indexes=args.skip_indexes,
+                config=None,
+                native_args=[],
+            )
+            code = run_stage(ctx, onboard)
+            if code:
+                return code
+        print(
+            f"Investor {slug} is ready.\n"
+            f"  Assess a pitch: uv run vclogic assess --investor {slug} --pitch /path/pitch.txt --company NAME\n"
+            "  Web interface:  uv run vclogic web",
+            flush=True,
+        )
+        return 0
     if args.command == "onboard":
         result = json.loads(
             component_command(
@@ -330,32 +368,10 @@ def run_all(ctx: Context, args) -> int:
             )
         if not re.fullmatch(SLUG, slug) or not collected(traces, slug):
             print(
-                f"Collection is not finished. Resume with: uv run vclogic run --investor {slug}",
+                f"Collection is not finished. Resume with: uv run vclogic collect --investor {slug}",
                 flush=True,
             )
             return 1
     print(f"run: collection complete for {slug}", flush=True)
-    wiki = root / "wiki" / slug
-    if wiki.exists():
-        print(f"run: memory exists, checking {wiki}", flush=True)
-        code = invoke(ctx, "onboarding", ["investor-memory", "check", str(wiki)], cwd=root)
-        if code:
-            print("Existing memory is invalid; inspect it or use a new --workspace.", flush=True)
-            return code
-    else:
-        code = stage("memory")
-        if code:
-            return code
-    if (root / "pipeline/inputs/investors" / f"{slug}.toml").is_file():
-        print("run: investor already installed in the pipeline workspace", flush=True)
-    else:
-        code = stage("onboard")
-        if code:
-            return code
-    print(
-        f"Investor {slug} is ready.\n"
-        f"  Assess a pitch: uv run vclogic assess --investor {slug} --pitch /path/pitch.txt --company NAME\n"
-        "  Web interface:  uv run vclogic web",
-        flush=True,
-    )
-    return 0
+    # memory rechecks an existing memory and skips an installed investor, so rerunning resumes.
+    return stage("memory")

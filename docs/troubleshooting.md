@@ -19,6 +19,15 @@ The existing fake provider is specific to Elizabeth/Thoras and its legacy contra
 
 The audit recorded three collector base-test failures in optional pyannote detection; these are not proof that the core reviewer path requires AV models. Avoid installing every optional extra to hide an unrelated failure.
 
+## `memory: collector / verify` fails with "Quality report did not pass"
+
+The collection finished, but its corpus did not verify. The cause is usually an
+empty corpus: sources were approved with role `unknown`. Rerunning
+`vclogic run` repeats the error. Follow
+[If collection does not verify](../README.md#if-collection-does-not-verify):
+reopen the wizard with `uv run vclogic collect --investor <slug>`, redo from
+`triage`, set roles with `r`, and finish until it prints `Verified`.
+
 ## Collector "Wizard stopped: timed out"
 
 On a host that reaches the internet only through `HTTP(S)_PROXY`, the collector fetches
