@@ -127,10 +127,14 @@ def test_full_setup_upgrades_caches_and_reports_missing_host_tools(tmp_path, mon
 
 
 
-def test_long_path_prefixes_only_windows(tmp_path, monkeypatch):
+def test_long_path_leaves_other_platforms_unchanged(tmp_path, monkeypatch):
     monkeypatch.setattr(runtime.sys, "platform", "linux")
     assert runtime.long_path(tmp_path) == tmp_path
-    monkeypatch.setattr(runtime.sys, "platform", "win32")
+
+
+# Only Windows paths understand the \\?\ prefix, so this cannot be faked elsewhere.
+@pytest.mark.skipif(runtime.sys.platform != "win32", reason="Windows path semantics")
+def test_long_path_prefixes_windows_paths_once(tmp_path):
     prefixed = runtime.long_path(tmp_path)
     assert str(prefixed).startswith("\\\\?\\")
     assert runtime.long_path(prefixed) == prefixed
