@@ -33,7 +33,7 @@
     {
       "id": "assessment",
       "repository": "https://github.com/VCLogic/vclogic-vc-agentic-assessment.git",
-      "commit": "3039569dd04ee3c33cec100597e06a3886e6e0e3",
+      "commit": "b5f745a839f38fb27758bad03ee7c6976a6cef86",
       "directory": "vclogic-vc-agentic-assessment",
       "package": "vclogic-vc-agentic-assessment",
       "version": "0.1.0",

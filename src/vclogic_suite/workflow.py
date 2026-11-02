@@ -11,6 +11,7 @@ import subprocess
 import tomllib
 from pathlib import Path
 
+from .data import pipeline as research_pipeline
 from .files import safe_path
 from .research import check_credentials
 from .runtime import Context, component_command, execution_environment
@@ -155,7 +156,7 @@ def run_stage(ctx: Context, args) -> int:
                 )
     root = ctx.workspace / "research"
     traces = root / "traces"
-    pipeline = root / "pipeline"
+    pipeline = research_pipeline(ctx)
     wiki = root / "wiki" / (slug or "")
     bundle = root / "bundles" / (slug or "")
     root.mkdir(parents=True, exist_ok=True)

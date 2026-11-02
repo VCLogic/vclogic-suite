@@ -10,6 +10,7 @@ import tomllib
 from datetime import UTC, datetime
 from pathlib import Path
 
+from .data import pipeline
 from .files import safe_path
 from .runtime import Context, component_command, execution_environment, long_path
 
@@ -36,7 +37,7 @@ def check_credentials(config: dict) -> None:
 def launch(ctx: Context, args) -> int:
     from .workflow import settings
 
-    workspace = (args.research_workspace or ctx.workspace / "research/pipeline").resolve()
+    workspace = (args.research_workspace or pipeline(ctx)).resolve()
     if args.config is None and args.command == "web" and not args.investor:
         # Any installed rehearsal config starts the app; the UI then lists every installed investor.
         installed = sorted(workspace.glob("configs/investors/*/rehearsal.toml"))
