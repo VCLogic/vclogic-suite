@@ -1,6 +1,42 @@
+import subprocess
+import sys
 from hashlib import sha256
 
 import pytest
+
+
+@pytest.mark.parametrize("no_keys", [False, True])
+def test_component_process_reads_utf8_with_windows_locale(tmp_path, monkeypatch, no_keys):
+    from vclogic_suite.runtime import execution_environment
+
+    monkeypatch.setenv("PYTHONUTF8", "0")
+    source = tmp_path / "unicode.txt"
+    source.write_text("\u201cInvestor\u201d", encoding="utf-8")
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from pathlib import Path; import sys; "
+            "assert Path(sys.argv[1]).read_text() == '\\u201cInvestor\\u201d'",
+            str(source),
+        ],
+        env=execution_environment(no_keys=no_keys),
+        capture_output=True,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_run_captures_and_logs_utf8(tmp_path):
+    from vclogic_suite.runtime import run
+
+    log = tmp_path / "run.log"
+    output = run(
+        [sys.executable, "-c", "print('\\u201cInvestor\\u201d')"],
+        cwd=tmp_path,
+        log=log,
+    )
+    assert output.strip() == "\u201cInvestor\u201d"
+    assert log.read_text(encoding="utf-8").strip() == output.strip()
 
 
 def test_copy_manifest_checks_hashes_and_refuses_escape(tmp_path):

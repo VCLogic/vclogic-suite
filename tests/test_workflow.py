@@ -39,6 +39,26 @@ def test_process_handoff_and_failure_stop(tmp_path, monkeypatch):
     assert all(str(ctx.workspace / "research/traces") in c[1] for c in calls)
 
 
+def test_failed_export_verification_points_to_collector_triage(tmp_path, monkeypatch, capsys):
+    from vclogic_suite import workflow
+
+    calls = []
+
+    def invoke(ctx, component, command, *, cwd):
+        calls.append(command)
+        return 1
+
+    monkeypatch.setattr(workflow, "invoke", invoke)
+    monkeypatch.setattr(workflow.shutil, "which", lambda name: "/bin/claude")
+    ctx = Context(tmp_path, tmp_path / "components", tmp_path / "workspace")
+    args = parser().parse_args(["memory", "--investor", "example"])
+    assert workflow.run_stage(ctx, args) == 1
+    assert [call[1] for call in calls] == ["verify"]  # No paid full-build.
+    out = capsys.readouterr().out
+    assert "uv run vclogic collect --investor example" in out
+    assert "README.md#if-collection-does-not-verify" in out
+
+
 def test_workflow_rejects_path_escape(tmp_path):
     from vclogic_suite.workflow import run_stage
 
@@ -223,11 +243,19 @@ def test_memory_harness_comes_from_settings(tmp_path, monkeypatch):
     monkeypatch.setattr(
         workflow, "invoke", lambda ctx, c, command, *, cwd: calls.append(command) or 0
     )
+    monkeypatch.setattr(
+        workflow, "component_command", lambda *a, **kw: '{"valid":true,"ready_for_assessment":true}'
+    )
     ctx = Context(tmp_path, tmp_path / "components", tmp_path / "workspace")
     assert workflow.run_stage(ctx, parser().parse_args(["memory", "--investor", "jane-roe"])) == 0
+    assert [call[1] for call in calls] == ["verify", "full-build", "check", "prepare", "install"]
     build = calls[1]
     assert build[1] == "full-build"
     assert build[-4:] == ["--harness", "claude", "--workers", "2"]
+    calls.clear()
+    (tmp_path / "vclogic.toml").write_text('[memory]\nharness = "claude"\nmodel = "opus"\n')
+    workflow.run_stage(ctx, parser().parse_args(["memory", "--investor", "modelled"]))
+    assert calls[1][-4:] == ["--model", "opus", "--harness", "claude"]
     calls.clear()
     args = parser().parse_args(["memory", "--investor", "other", "--", "--harness", "codex"])
     workflow.run_stage(ctx, args)
@@ -300,3 +328,19 @@ def test_proxy_without_opt_in_warns(monkeypatch):
     monkeypatch.setenv("HTTPS_PROXY", "http://proxy.invalid:8080")
     warnings = proxy_warnings()
     assert len(warnings) == 1 and "VC_TRACE_ALLOW_ENV_PROXY" in warnings[0]
+
+
+def test_memory_rechecks_existing_memory_and_continues_to_onboarding(tmp_path, monkeypatch):
+    from vclogic_suite import workflow
+
+    calls = []
+    monkeypatch.setattr(
+        workflow, "invoke", lambda ctx, c, command, *, cwd: calls.append(command[1]) or 0
+    )
+    monkeypatch.setattr(
+        workflow, "component_command", lambda *a, **kw: '{"valid":true,"ready_for_assessment":true}'
+    )
+    ctx = Context(tmp_path, tmp_path / "components", tmp_path / "workspace")
+    (ctx.workspace / "research/wiki/example").mkdir(parents=True)
+    assert workflow.run_stage(ctx, parser().parse_args(["memory", "--investor", "example"])) == 0
+    assert calls == ["check", "prepare", "install"]  # Never regenerated.

@@ -10,6 +10,8 @@ import sys
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+from dotenv import dotenv_values
+
 from .components import Component, ensure_component, load_components, verify_component
 from .files import digest, write_json
 
@@ -22,6 +24,22 @@ FULL_EXTRAS = {
 
 CORE = ("memory", "assessment", "onboarding")
 PROFILES = {"core": CORE, "web": (*CORE, "web"), "all": (*CORE, "web", "collector")}
+
+def long_path(path: Path) -> Path:
+    """Lift Windows' 260-character MAX_PATH without the LongPathsEnabled setting.
+
+    Pitch-project assessments nest past MAX_PATH. The extended-length prefix is
+    inherited by every path a component derives from this root; other platforms
+    get the path unchanged.
+    """
+    if sys.platform != "win32":
+        return path
+    text = str(path.resolve())
+    if text.startswith("\\\\?\\"):
+        return Path(text)
+    if text.startswith("\\\\"):
+        return Path("\\\\?\\UNC\\" + text[2:])
+    return Path("\\\\?\\" + text)
 
 
 @dataclass
@@ -79,6 +97,7 @@ def execution_environment(*, no_keys: bool = False) -> dict[str, str]:
         OMP_NUM_THREADS="1",
         MKL_NUM_THREADS="1",
         PYTHONNOUSERSITE="1",
+        PYTHONUTF8="1",
     )
     return env
 
@@ -89,13 +108,14 @@ def run(command: list[str], *, cwd: Path, log: Path | None = None, no_keys: bool
         cwd=cwd,
         env=execution_environment(no_keys=no_keys),
         text=True,
+        encoding="utf-8",
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
     if log is not None:
         log.parent.mkdir(parents=True, exist_ok=True)
         # Default demo only uses no-key subprocesses; live output is not persisted here.
-        log.write_text(result.stdout + "\n" + result.stderr)
+        log.write_text(result.stdout + "\n" + result.stderr, encoding="utf-8")
     if result.returncode:
         location = f"; inspect {log}" if log else "; check dependencies and configuration"
         raise ValueError(f"{Path(command[0]).name} failed (exit {result.returncode}){location}")
@@ -182,6 +202,54 @@ def require_core(ctx: Context) -> None:
         raise ValueError(f"Reviewer setup incomplete: {error}. Run uv run vclogic init") from error
 
 
+def cuda_requested(root: Path) -> bool:
+    values = dotenv_values(root / ".env", interpolate=False)
+    return os.environ.get("VC_TRACE_AV_DEVICE", values.get("VC_TRACE_AV_DEVICE")) == "cuda"
+
+
+def ensure_cuda(ctx: Context, project: Path, *, offline: bool) -> None:
+    python = ["uv", "run", "--offline", "--no-sync", "--project", str(project), "python", "-c"]
+    probe = """import importlib.metadata as metadata, json
+versions = {d.metadata['Name']: d.version for d in metadata.distributions()
+            if d.metadata['Name'] in ('torch', 'torchaudio', 'torchvision')}
+cuda = None
+if 'torch' in versions:
+    import torch
+    cuda = torch.version.cuda
+print(json.dumps({'versions': versions, 'cuda': cuda}))
+"""
+    state = json.loads(run([*python, probe], cwd=ctx.root))
+    if "torch" not in state["versions"]:
+        return
+    log = ctx.workspace / "setup-logs" / f"{project.name}-cuda.log"
+    if not state["cuda"]:
+        print(f"Installing CUDA Torch for {project.name}...", file=sys.stderr, flush=True)
+        command = [
+            "uv",
+            "pip",
+            "install",
+            "--python",
+            str(project / ".venv"),
+            "--torch-backend",
+            "auto",
+        ]
+        for name, version in state["versions"].items():
+            command.extend(["--reinstall-package", name, f"{name}=={version.split('+')[0]}"])
+        if offline:
+            command.append("--offline")
+        run(command, cwd=ctx.root, log=log)
+    # A CUDA wheel alone does not prove the driver/GPU can execute its kernels.
+    check = """import torch
+if not torch.cuda.is_available():
+    raise RuntimeError('VC_TRACE_AV_DEVICE=cuda requires a usable NVIDIA GPU and CUDA Torch')
+x = torch.ones((32, 32), device='cuda')
+if (x @ x).sum().item() != 32768:
+    raise RuntimeError('CUDA computation failed')
+print(torch.__version__, torch.cuda.get_device_name(0), 'CUDA computation passed')
+"""
+    print(run([*python, check], cwd=ctx.root, log=log).strip(), flush=True)
+
+
 def bootstrap(
     ctx: Context,
     profile: str = "core",
@@ -189,6 +257,7 @@ def bootstrap(
     offline: bool = False,
     embeddings: bool = False,
     full: bool = False,
+    cuda: bool = False,
 ) -> dict:
     if shutil.which("uv") is None or shutil.which("git") is None:
         raise ValueError("Install uv and Git before bootstrap")
@@ -230,6 +299,8 @@ def bootstrap(
                 or (extra_receipt.is_file() and json.loads(extra_receipt.read_text()) == stamp)
             )
         ):
+            if cuda:
+                ensure_cuda(ctx, project, offline=offline)
             continue
         print(f"Installing locked {name} environment...", file=sys.stderr, flush=True)
         command = ["uv", "sync", "--locked", "--no-dev", "--python", "3.12.12"]
@@ -254,6 +325,8 @@ def bootstrap(
             if offline:
                 pdf_command.append("--offline")
             run(pdf_command, cwd=project, log=ctx.workspace / "setup-logs/memory-pdf.log")
+        if cuda:
+            ensure_cuda(ctx, project, offline=offline)
         write_json(receipt, stamp)
         if full:
             write_json(full_receipt, full_stamp)

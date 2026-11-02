@@ -9,6 +9,9 @@ args = []
 # Local generation harness for investor-memory full-build: "auto", "codex" or "claude".
 # "auto" asks in a terminal when both are installed.
 harness = "auto"
+# Model for the harness, e.g. "gpt-5.6-sol" (Codex) or "sonnet" / "opus" (Claude).
+# Empty asks in a terminal; without a terminal the harness default is used.
+model = ""
 # Extra native options, e.g. ["--model", "sonnet", "--workers", "3"].
 args = []
 

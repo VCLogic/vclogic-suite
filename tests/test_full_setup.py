@@ -1,7 +1,74 @@
+import json
 from types import SimpleNamespace
+
+import pytest
 
 from vclogic_suite import runtime
 from vclogic_suite.files import write_json
+
+
+@pytest.mark.parametrize("shell,expected", [(None, True), ("cpu", False), ("cuda", True)])
+def test_cuda_setting_uses_root_dotenv_with_shell_precedence(
+    tmp_path, monkeypatch, shell, expected
+):
+    (tmp_path / ".env").write_text("VC_TRACE_AV_DEVICE=cuda\n")
+    monkeypatch.delenv("VC_TRACE_AV_DEVICE", raising=False)
+    if shell is not None:
+        monkeypatch.setenv("VC_TRACE_AV_DEVICE", shell)
+    assert runtime.cuda_requested(tmp_path) is expected
+
+
+@pytest.mark.parametrize("compiled", [None, "13.0"])
+def test_cuda_setup_preserves_versions_and_verifies_gpu(tmp_path, monkeypatch, compiled):
+    calls = []
+    versions = {"torch": "2.14.0+cpu", "torchaudio": "2.14.0+cpu"}
+
+    def run(command, **kwargs):
+        calls.append((command, kwargs))
+        if len(calls) == 1:
+            return json.dumps({"versions": versions, "cuda": compiled})
+        return ""
+
+    monkeypatch.setattr(runtime, "run", run)
+    ctx = SimpleNamespace(root=tmp_path, workspace=tmp_path)
+    runtime.ensure_cuda(ctx, tmp_path / "component", offline=True)
+    installs = [c for c, _ in calls if c[:3] == ["uv", "pip", "install"]]
+    assert len(installs) == (compiled is None)
+    if installs:
+        command = installs[0]
+        assert "torch==2.14.0" in command and "torchaudio==2.14.0" in command
+        assert command[command.index("--torch-backend") + 1] == "auto"
+        assert "--offline" in command
+        assert command.count("--reinstall-package") == 2
+    assert "device='cuda'" in calls[-1][0][-1]
+
+
+def test_cuda_setup_does_not_add_torch_to_lightweight_environment(tmp_path, monkeypatch):
+    calls = []
+
+    def run(command, **kwargs):
+        calls.append(command)
+        return json.dumps({"versions": {}, "cuda": None})
+
+    monkeypatch.setattr(runtime, "run", run)
+    runtime.ensure_cuda(SimpleNamespace(root=tmp_path, workspace=tmp_path), tmp_path, offline=False)
+    assert len(calls) == 1
+
+
+def test_cuda_verification_failure_is_not_silently_accepted(tmp_path, monkeypatch):
+    calls = []
+
+    def run(command, **kwargs):
+        calls.append(command)
+        if len(calls) == 1:
+            return json.dumps({"versions": {"torch": "2.14.0+cu130"}, "cuda": "13.0"})
+        raise ValueError("CUDA check failed")
+
+    monkeypatch.setattr(runtime, "run", run)
+    with pytest.raises(ValueError, match="CUDA check failed"):
+        runtime.ensure_cuda(
+            SimpleNamespace(root=tmp_path, workspace=tmp_path), tmp_path, offline=True
+        )
 
 
 def test_full_setup_upgrades_caches_and_reports_missing_host_tools(tmp_path, monkeypatch):
@@ -50,3 +117,24 @@ def test_full_setup_upgrades_caches_and_reports_missing_host_tools(tmp_path, mon
     runtime.bootstrap(ctx, "all", full=True, offline=True)
     assert not any(command[:2] == ["uv", "sync"] for command, _ in calls)
     assert not any("install" in command for command, _ in calls)
+    cuda_checks = []
+    monkeypatch.setattr(
+        runtime, "ensure_cuda", lambda ctx, project, **kw: cuda_checks.append(project.name)
+    )
+    runtime.bootstrap(ctx, "all", full=True, offline=True, cuda=True)
+    assert set(cuda_checks) == {"assessment", "onboarding", "web", "collector"}
+    assert not any(command[:2] == ["uv", "sync"] for command, _ in calls)
+
+
+
+def test_long_path_leaves_other_platforms_unchanged(tmp_path, monkeypatch):
+    monkeypatch.setattr(runtime.sys, "platform", "linux")
+    assert runtime.long_path(tmp_path) == tmp_path
+
+
+# Only Windows paths understand the \\?\ prefix, so this cannot be faked elsewhere.
+@pytest.mark.skipif(runtime.sys.platform != "win32", reason="Windows path semantics")
+def test_long_path_prefixes_windows_paths_once(tmp_path):
+    prefixed = runtime.long_path(tmp_path)
+    assert str(prefixed).startswith("\\\\?\\")
+    assert runtime.long_path(prefixed) == prefixed

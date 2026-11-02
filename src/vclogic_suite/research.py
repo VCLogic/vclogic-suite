@@ -10,8 +10,9 @@ import tomllib
 from datetime import UTC, datetime
 from pathlib import Path
 
+from .data import pipeline
 from .files import safe_path
-from .runtime import Context, component_command, execution_environment
+from .runtime import Context, component_command, execution_environment, long_path
 
 
 def check_credentials(config: dict) -> None:
@@ -36,7 +37,7 @@ def check_credentials(config: dict) -> None:
 def launch(ctx: Context, args) -> int:
     from .workflow import settings
 
-    workspace = (args.research_workspace or ctx.workspace / "research/pipeline").resolve()
+    workspace = (args.research_workspace or pipeline(ctx)).resolve()
     if args.config is None and args.command == "web" and not args.investor:
         # Any installed rehearsal config starts the app; the UI then lists every installed investor.
         installed = sorted(workspace.glob("configs/investors/*/rehearsal.toml"))
@@ -86,7 +87,7 @@ def launch(ctx: Context, args) -> int:
         command = [
             "vc-clone-web",
             "--pipeline-workspace",
-            str(workspace),
+            str(long_path(workspace)),
             "--config",
             relative,
             "--static-root",
@@ -96,7 +97,7 @@ def launch(ctx: Context, args) -> int:
         ]
         for flag, folder in (("--investor-bundles", "bundles"), ("--investment-memory", "wiki")):
             if (ctx.workspace / "research" / folder).is_dir():
-                command += [flag, str(ctx.workspace / "research" / folder)]
+                command += [flag, str(long_path(ctx.workspace / "research" / folder))]
     else:
         session = f"{args.investor}-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
         command = [
@@ -120,7 +121,7 @@ def launch(ctx: Context, args) -> int:
     )
     code = subprocess.call(
         ["uv", "run", "--offline", "--no-sync", "--project", str(project), *command],
-        cwd=workspace,
+        cwd=long_path(workspace),
         env=execution_environment(no_keys=False),
     )
     if code or args.command == "web":

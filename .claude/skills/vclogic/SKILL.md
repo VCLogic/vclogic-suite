@@ -39,18 +39,18 @@ reruns the same command with `--investor <slug>` to resume.
 Then continue unattended:
 
 ```bash
-uv run vclogic run --investor <slug>
+uv run vclogic memory --investor <slug>
 ```
 
-`run` skips finished stages. It builds the memory (`investor-memory full-build`),
-validates it, prepares and checks the onboarding bundle, and installs it into
-`workspace/research/pipeline/`. The web app then lists the investor automatically.
+`memory` builds the memory (`investor-memory full-build`), validates it, prepares
+and checks the onboarding bundle, and installs it into `workspace/research/pipeline/`.
+Rerunning it is safe: an existing memory is revalidated, not regenerated, and an
+installed investor is skipped. The web app then lists the investor automatically.
 
 Memory generation uses a local harness, Codex or Claude Code. Shell calls from an
 agent are non-interactive, so `harness = "auto"` stops when both are installed.
 Then ask the user which one to use and run the memory stage explicitly:
 `uv run vclogic memory --investor <slug> -- --harness claude`.
-Rerun `run` afterwards.
 
 If the user types the whole flow themselves, `! uv run vclogic run --name "Investor Name"`
 does collection and everything after it in one command.
@@ -78,6 +78,11 @@ investors appear without a restart.
 
 Stages stop on the first nonzero native exit. Quote the native error, name the
 stage, and give the resume command. Never delete `wiki/<slug>` or a bundle to retry.
+If `memory: collector / verify` reports `Quality report did not pass`, do not rerun
+`run`. Summarize the failed checks and warnings in
+`workspace/research/traces/<slug>/quality_report.json`, then ask the user to run
+`! uv run vclogic collect --investor <slug>`, redo from `triage`, and set the
+roles, as described in `README.md#if-collection-does-not-verify`.
 Those outputs are never overwritten, so ask the user before choosing a new
 `--workspace`. Structural validation does not prove the memory is semantically
 correct. Say so when reporting success.
